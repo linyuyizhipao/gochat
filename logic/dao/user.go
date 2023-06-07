@@ -12,7 +12,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-var dbIns = db.GetDb("gochat")
+var dbIns = db.GetDb(db.DefaultDbname)
 
 type User struct {
 	Id         int `gorm:"primary_key"`
