@@ -78,6 +78,22 @@ func (rpc *RpcConnect) DisConnect(disConnReq *proto.DisConnectRequest) (err erro
 	return
 }
 
+func (rpc *RpcConnect) Push(req *proto.Send) (code int, msg string) {
+	reply := &proto.SuccessReply{}
+	logicRpcClient.Call(context.Background(), "Push", req, reply)
+	code = reply.Code
+	msg = reply.Msg
+	return
+}
+
+func (rpc *RpcConnect) PushRoom(req *proto.Send) (code int, msg string) {
+	reply := &proto.SuccessReply{}
+	logicRpcClient.Call(context.Background(), "PushRoom", req, reply)
+	code = reply.Code
+	msg = reply.Msg
+	return
+}
+
 func (c *Connect) InitConnectWebsocketRpcServer() (err error) {
 	var network, addr string
 	connectRpcAddress := strings.Split(config.Conf.Connect.ConnectRpcAddressWebSockts.Address, ",")

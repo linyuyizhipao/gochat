@@ -6,7 +6,6 @@
 package connect
 
 import (
-	"github.com/sirupsen/logrus"
 	"gochat/proto"
 	"sync"
 	"sync/atomic"
@@ -52,7 +51,6 @@ func (b *Bucket) PushRoom(ch chan *proto.PushRoomMsgRequest) {
 		arg = <-ch
 
 		if room = b.Room(arg.RoomId); room != nil {
-			logrus.Infof("PushRoomMsg222222222222222222222222222222222 msg2 %+v", arg)
 			room.Push(&arg.Msg)
 		}
 	}

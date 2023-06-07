@@ -26,12 +26,17 @@ const (
 	RedisPrefix           = "gochat_"
 	RedisRoomPrefix       = "gochat_room_"
 	RedisRoomOnlinePrefix = "gochat_room_online_count_"
-	MsgVersion            = 1
-	OpSingleSend          = 2 // single user
-	OpRoomSend            = 3 // send to room
-	OpRoomCountSend       = 4 // get online user count
-	OpRoomInfoSend        = 5 // send info to room
-	OpBuildTcpConn        = 6 // build tcp conn
+)
+
+// proto
+const (
+	MsgVersion         = 1
+	OpSingleSend       = 2 // single user
+	OpRoomSend         = 3 // send to room
+	OpRoomCountSend    = 4 // get online user count
+	OpRoomInfoSend     = 5 // send info to room
+	OpBuildTcpConn     = 6 // build tcp conn
+	OpWebsocketConnSub = 7 // build websocket conn
 )
 
 type Config struct {

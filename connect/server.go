@@ -9,7 +9,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/websocket"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"gochat/config"
 	"gochat/proto"
 	"gochat/tools"
 	"time"
@@ -41,7 +43,7 @@ func NewServer(b []*Bucket, o Operator, options ServerOptions) *Server {
 	return s
 }
 
-//reduce lock competition, use google city hash insert to different bucket
+// reduce lock competition, use google city hash insert to different bucket
 func (s *Server) Bucket(userId int) *Bucket {
 	userIdStr := fmt.Sprintf("%d", userId)
 	idx := tools.CityHash32([]byte(userIdStr), uint32(len(userIdStr))) % s.bucketIdx
@@ -124,32 +126,92 @@ func (s *Server) readPump(ch *Channel, c *Connect) {
 		if message == nil {
 			return
 		}
-		var connReq *proto.ConnectRequest
-		logrus.Infof("get a message :%s", message)
-		if err := json.Unmarshal([]byte(message), &connReq); err != nil {
-			logrus.Errorf("message struct %+v", connReq)
+
+		var sendMsg proto.SendWebSocket
+		if err := json.Unmarshal(message, &sendMsg); err != nil {
+			logrus.Errorf("tcp message struct %+v", sendMsg)
+			break
 		}
-		if connReq == nil || connReq.AuthToken == "" {
-			logrus.Errorf("s.operator.Connect no authToken")
+		if err = s.Exec(c.ServerId, sendMsg, ch); err != nil {
+			logrus.Errorf("tcp message Exec %v", err)
 			return
-		}
-		connReq.ServerId = c.ServerId //config.Conf.Connect.ConnectWebsocket.ServerId
-		userId, err := s.operator.Connect(connReq)
-		if err != nil {
-			logrus.Errorf("s.operator.Connect error %s", err.Error())
-			return
-		}
-		if userId == 0 {
-			logrus.Error("Invalid AuthToken ,userId empty")
-			return
-		}
-		logrus.Infof("websocket rpc call return userId:%d,RoomId:%d", userId, connReq.RoomId)
-		b := s.Bucket(userId)
-		//insert into a bucket
-		err = b.Put(userId, connReq.RoomId, ch)
-		if err != nil {
-			logrus.Errorf("conn close err: %s", err.Error())
-			ch.conn.Close()
 		}
 	}
+}
+
+func (s *Server) Exec(serverId string, sendMsg proto.SendWebSocket, ch *Channel) (err error) {
+	switch sendMsg.Op {
+	case config.OpWebsocketConnSub:
+		return s.Sub(serverId, sendMsg, ch)
+	case config.OpSingleSend:
+		return s.Push(sendMsg)
+	case config.OpRoomSend:
+		return s.PushRoom(sendMsg)
+	default:
+		return s.Sub(serverId, sendMsg, ch)
+	}
+}
+
+func (s *Server) Sub(serverId string, sendMsg proto.SendWebSocket, ch *Channel) (err error) {
+	if sendMsg.AuthToken == "" {
+		err = errors.New("tcp s.operator.Connect no authToken")
+		return
+	}
+	var connReq *proto.ConnectRequest
+	var userId int
+	connReq.AuthToken = sendMsg.AuthToken
+	connReq.ServerId = serverId //config.Conf.Connect.ConnectWebsocket.ServerId
+	userId, err = s.operator.Connect(connReq)
+	if err != nil {
+		err = errors.Errorf("s.operator.Connect error %s", err.Error())
+		return
+	}
+	if userId == 0 {
+		err = errors.New("Invalid AuthToken ,userId empty")
+		return
+	}
+	logrus.Infof("websocket rpc call return userId:%d,RoomId:%d", userId, connReq.RoomId)
+	b := s.Bucket(userId)
+	err = b.Put(userId, connReq.RoomId, ch)
+	if err != nil {
+		cErr := ch.conn.Close()
+		logrus.Errorf("conn close err: %s; cErr=%v", err.Error(), cErr)
+		return
+	}
+	return nil
+}
+
+func (s *Server) Push(sendMsg proto.SendWebSocket) (err error) {
+	req := &proto.Send{
+		Msg:          sendMsg.Msg,
+		FromUserId:   sendMsg.FromUserId,
+		FromUserName: sendMsg.FromUserName,
+		ToUserId:     sendMsg.ToUserId,
+		ToUserName:   sendMsg.ToUserName,
+		RoomId:       sendMsg.RoomId,
+		Op:           config.OpSingleSend,
+	}
+	code, rpcMsg := s.operator.Push(req)
+	if code == tools.CodeFail {
+		logrus.Errorf("Server Push code: %v; rpcMsg=%v", code, rpcMsg)
+		return
+	}
+	return nil
+}
+
+func (s *Server) PushRoom(sendMsg proto.SendWebSocket) (err error) {
+	req := &proto.Send{
+		Msg:          sendMsg.Msg,
+		FromUserId:   sendMsg.FromUserId,
+		FromUserName: sendMsg.FromUserName,
+		RoomId:       sendMsg.RoomId,
+		Op:           config.OpRoomSend,
+	}
+
+	code, rpcMsg := s.operator.Push(req)
+	if code == tools.CodeFail {
+		logrus.Errorf("Server PushRoom code: %v; rpcMsg=%v", code, rpcMsg)
+		return
+	}
+	return nil
 }
