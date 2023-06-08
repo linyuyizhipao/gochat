@@ -173,8 +173,9 @@ func (task *Task) watchServicesChange(d client.ServiceDiscovery) {
 	}
 }
 
-func (task *Task) pushSingleToConnect(serverId string, userId int, msg []byte) {
+func (task *Task) pushSingleToConnect(serverId string, userId int, msg []byte) (reply *proto.SuccessReply) {
 	logrus.Infof("pushSingleToConnect Body %s", string(msg))
+	reply = &proto.SuccessReply{}
 	pushMsgReq := &proto.PushMsgRequest{
 		UserId: userId,
 		Msg: proto.Msg{
@@ -184,7 +185,6 @@ func (task *Task) pushSingleToConnect(serverId string, userId int, msg []byte) {
 			Body:      msg,
 		},
 	}
-	reply := &proto.SuccessReply{}
 	connectRpc, err := RClient.GetRpcClientByServerId(serverId)
 	if err != nil {
 		logrus.Infof("get rpc client err %v", err)
@@ -194,6 +194,7 @@ func (task *Task) pushSingleToConnect(serverId string, userId int, msg []byte) {
 		logrus.Infof("pushSingleToConnect Call err %v", err)
 	}
 	logrus.Infof("reply %s", reply.Msg)
+	return
 }
 
 func (task *Task) broadcastRoomToConnect(roomId int, msg []byte) {

@@ -18,14 +18,15 @@ var realPath string
 var Conf *Config
 
 const (
-	SuccessReplyCode      = 0
-	FailReplyCode         = 1
-	SuccessReplyMsg       = "success"
-	QueueName             = "gochat_queue"
-	RedisBaseValidTime    = 86400
-	RedisPrefix           = "gochat_"
-	RedisRoomPrefix       = "gochat_room_"
-	RedisRoomOnlinePrefix = "gochat_room_online_count_"
+	SuccessReplyCode           = 0
+	FailReplyCode              = 1
+	FailReplyClientNotExistMsg = "The client does not exist"
+	SuccessReplyMsg            = "success"
+	QueueName                  = "gochat_queue"
+	RedisBaseValidTime         = 86400
+	RedisPrefix                = "gochat_"
+	RedisRoomPrefix            = "gochat_room_"
+	RedisRoomOnlinePrefix      = "gochat_room_online_count_"
 )
 
 // proto

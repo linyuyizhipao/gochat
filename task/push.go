@@ -33,12 +33,37 @@ func (task *Task) GoPush() {
 	}
 }
 
+// 单推，如果发生了用户漂移，那就广播
 func (task *Task) processSinglePush(ch chan *PushParams) {
 	var arg *PushParams
 	for {
 		arg = <-ch
-		//@todo when arg.ServerId server is down, user could be reconnect other serverId but msg in queue no consume
-		task.pushSingleToConnect(arg.ServerId, arg.UserId, arg.Msg)
+		reply := task.pushSingleToConnect(arg.ServerId, arg.UserId, arg.Msg)
+		if reply.Code == config.SuccessReplyCode {
+			continue
+		}
+
+		if reply.Code == config.FailReplyCode && reply.Msg == config.FailReplyClientNotExistMsg {
+			//如果下线又跑到别的serverid了，首先这个可以根据userid做负载均衡，去保证同一个userid会上同一个服务器
+			//其次再发生的概率就相对更小了，实在发生就广播一下也无妨
+			for serverId, _ := range RClient.ServerInsMap {
+				if serverId == arg.ServerId {
+					continue
+				}
+
+				reply := task.pushSingleToConnect(serverId, arg.UserId, arg.Msg)
+				if reply.Code == config.SuccessReplyCode {
+					break
+				}
+
+				if reply.Code == config.FailReplyCode && reply.Msg == config.FailReplyClientNotExistMsg {
+					continue
+				}
+				break
+			}
+			continue
+		}
+
 	}
 }
 
