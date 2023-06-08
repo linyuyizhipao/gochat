@@ -6,9 +6,9 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"gochat/api"
+	"gochat/config"
 	"gochat/connect"
 	"gochat/logic"
 	"gochat/site"
@@ -19,9 +19,7 @@ import (
 )
 
 func main() {
-	var module string
-	flag.StringVar(&module, "module", "", "assign run module")
-	flag.Parse()
+	module := config.Conf.Module
 	fmt.Println(fmt.Sprintf("start run %s module", module))
 	switch module {
 	case "logic":

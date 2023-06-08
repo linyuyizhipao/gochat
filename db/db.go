@@ -16,7 +16,7 @@ import (
 
 const (
 	DefaultDbname   = "gochat"
-	MysqlDatasource = "root:123456@tcp(127.0.0.1:3306)/platform?charset=utf8mb4&parseTime=true&loc=Asia%2FShanghai"
+	MysqlDatasource = "root:123456@tcp(127.0.0.1:3306)/gochat?charset=utf8mb4&parseTime=true&loc=Asia%2FShanghai"
 )
 
 var dbMap = map[string]*gorm.DB{}

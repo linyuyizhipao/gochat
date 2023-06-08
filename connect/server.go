@@ -157,8 +157,9 @@ func (s *Server) Sub(serverId string, sendMsg proto.SendWebSocket, ch *Channel) 
 		err = errors.New("tcp s.operator.Connect no authToken")
 		return
 	}
-	var connReq *proto.ConnectRequest
+	var connReq = &proto.ConnectRequest{}
 	var userId int
+	connReq.RoomId = sendMsg.RoomId
 	connReq.AuthToken = sendMsg.AuthToken
 	connReq.ServerId = serverId //config.Conf.Connect.ConnectWebsocket.ServerId
 	userId, err = s.operator.Connect(connReq)

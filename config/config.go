@@ -6,16 +6,13 @@
 package config
 
 import (
+	"flag"
 	"github.com/spf13/viper"
 	"os"
-	"path/filepath"
-	"runtime"
-	"strings"
 	"sync"
 )
 
 var once sync.Once
-var realPath string
 var Conf *Config
 
 const (
@@ -42,31 +39,28 @@ const (
 )
 
 type Config struct {
-	Common  Common
-	Connect ConnectConfig
-	Logic   LogicConfig
-	Task    TaskConfig
-	Api     ApiConfig
-	Site    SiteConfig
+	Common         Common
+	Connect        ConnectConfig
+	Logic          LogicConfig
+	Task           TaskConfig
+	Api            ApiConfig
+	Site           SiteConfig
+	Module         string
+	ConfigFilePath string
 }
 
 func init() {
 	Init()
 }
 
-func getCurrentDir() string {
-	_, fileName, _, _ := runtime.Caller(1)
-	aPath := strings.Split(fileName, "/")
-	dir := strings.Join(aPath[0:len(aPath)-1], "/")
-	return dir
-}
-
 func Init() {
 	once.Do(func() {
-		env := GetMode()
-		realPath, _ := filepath.Abs("./")
-		//realPath := getCurrentDir()
-		configFilePath := realPath + "/" + env + "/"
+		var module, conf string
+		flag.StringVar(&module, "module", "", "assign run module")
+		flag.StringVar(&conf, "conf", "", "配置文件路径")
+		flag.Parse()
+
+		configFilePath := conf
 		viper.SetConfigType("toml")
 		viper.SetConfigName("/connect")
 		viper.AddConfigPath(configFilePath)
@@ -100,6 +94,8 @@ func Init() {
 			panic(err)
 		}
 		Conf = new(Config)
+		Conf.Module = module
+		Conf.ConfigFilePath = configFilePath
 		viper.Unmarshal(&Conf.Common)
 		viper.Unmarshal(&Conf.Connect)
 		viper.Unmarshal(&Conf.Task)
