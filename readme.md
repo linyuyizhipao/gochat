@@ -292,3 +292,15 @@ jetbranins官方在赠送license的时候会请求提议加入他们的品牌log
 gochat is licensed under the MIT License. 
 
 
+
+## 带着疑问看代码
+1. 我看room群发是  task 获取all 的rpc服务端，然后挨个调用，这里面如何去保证原子性的。
+我看目前貌似是直接舍弃了，  看看goim是怎么考虑这一块的
+
+2. 用户的conn维护都在 connect层，然后每一个uid对应的 服务器映射(serverid)储存在redis，这个有没有可能用一致性hash省掉
+3. 用户单聊是直接通过uid对应的serverid找到服务器，进行针对性推送，群发则是广播所有connect服务器，有没有角度或者有没有必要优化成，
+只推送房间内成员所在的connect
+4. 单聊用户，会先找userid对应的connect服务器，然后推送过去，但如果查用户服务的时候，用户在A，但推送的时候，用户跑到服务B了，这一块如何保证原子性
+
+
+
