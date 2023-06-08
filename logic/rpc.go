@@ -173,7 +173,8 @@ func (rpc *RpcLogic) Logout(ctx context.Context, args *proto.LogoutRequest, repl
 	return
 }
 
-/**
+/*
+*
 single send msg
 */
 func (rpc *RpcLogic) Push(ctx context.Context, args *proto.Send, reply *proto.SuccessReply) (err error) {
@@ -203,7 +204,8 @@ func (rpc *RpcLogic) Push(ctx context.Context, args *proto.Send, reply *proto.Su
 	return
 }
 
-/**
+/*
+*
 push msg to room
 */
 func (rpc *RpcLogic) PushRoom(ctx context.Context, args *proto.Send, reply *proto.SuccessReply) (err error) {
@@ -242,7 +244,8 @@ func (rpc *RpcLogic) PushRoom(ctx context.Context, args *proto.Send, reply *prot
 	return
 }
 
-/**
+/*
+*
 get room online person count
 */
 func (rpc *RpcLogic) Count(ctx context.Context, args *proto.Send, reply *proto.SuccessReply) (err error) {
@@ -260,7 +263,8 @@ func (rpc *RpcLogic) Count(ctx context.Context, args *proto.Send, reply *proto.S
 	return
 }
 
-/**
+/*
+*
 get room info
 */
 func (rpc *RpcLogic) GetRoomInfo(ctx context.Context, args *proto.Send, reply *proto.SuccessReply) (err error) {
@@ -312,7 +316,6 @@ func (rpc *RpcLogic) Connect(ctx context.Context, args *proto.ConnectRequest, re
 		}
 		if RedisClient.HGet(roomUserKey, fmt.Sprintf("%d", reply.UserId)).Val() == "" {
 			RedisClient.HSet(roomUserKey, fmt.Sprintf("%d", reply.UserId), userInfo["userName"])
-			// add room user count ++
 			RedisClient.Incr(logic.getRoomOnlineCountKey(fmt.Sprintf("%d", args.RoomId)))
 		}
 	}
@@ -327,14 +330,20 @@ func (rpc *RpcLogic) DisConnect(ctx context.Context, args *proto.DisConnectReque
 	if args.RoomId > 0 {
 		count, _ := RedisSessClient.Get(logic.getRoomOnlineCountKey(fmt.Sprintf("%d", args.RoomId))).Int()
 		if count > 0 {
-			RedisClient.Decr(logic.getRoomOnlineCountKey(fmt.Sprintf("%d", args.RoomId))).Result()
+			err = RedisClient.Decr(logic.getRoomOnlineCountKey(fmt.Sprintf("%d", args.RoomId))).Err()
+		} else {
+			err = RedisClient.Del(logic.getRoomOnlineCountKey(fmt.Sprintf("%d", args.RoomId))).Err()
+		}
+		if err != nil {
+			logrus.Warnf("HDel DisConnect err : %v", err)
+			return
 		}
 	}
 	// room login user--
 	if args.UserId != 0 {
 		err = RedisClient.HDel(roomUserKey, fmt.Sprintf("%d", args.UserId)).Err()
 		if err != nil {
-			logrus.Warnf("HDel getRoomUserKey err : %s", err)
+			logrus.Warnf("HDel getRoomUserKey err : %v", err)
 		}
 	}
 	//below code can optimize send a signal to queue,another process get a signal from queue,then push event to websocket
