@@ -17,10 +17,29 @@ import (
 	"gochat/proto"
 	"gochat/tools"
 	"strconv"
+	"sync"
 	"time"
 )
 
+var (
+	onceRpcLogicOnce sync.Once
+	onceRpcLogic     *RpcLogic
+)
+
+func NewRpcLogic() *RpcLogic {
+	onceRpcLogicOnce.Do(func() {
+		onceRpcLogic = &RpcLogic{
+			syncDataPersistence: syncData{},
+		}
+		go func() {
+			onceRpcLogic.syncDataPersistence.SyncLoop(context.Background())
+		}()
+	})
+	return onceRpcLogic
+}
+
 type RpcLogic struct {
+	syncDataPersistence syncData
 }
 
 func (rpc *RpcLogic) Register(ctx context.Context, args *proto.RegisterRequest, reply *proto.RegisterReply) (err error) {
