@@ -14,6 +14,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/smallnest/rpcx/client"
 	"gochat/config"
+	"gochat/pkg/rpcclient"
 	"gochat/proto"
 	"gochat/tools"
 	"strings"
@@ -193,7 +194,11 @@ func (task *Task) pushSingleToConnect(serverId string, userId int, msg []byte) (
 	if err != nil {
 		logrus.Infof("pushSingleToConnect Call err %v", err)
 	}
-	logrus.Infof("reply %s", reply.Msg)
+
+	//持久化 data persistence
+	rpcclient.GetLogicRpcClient().PersistencePush(context.Background(), pushMsgReq)
+
+	logrus.Infof("reply %s pushMsgReq=%v", reply.Msg, pushMsgReq)
 	return
 }
 
@@ -214,6 +219,9 @@ func (task *Task) broadcastRoomToConnect(roomId int, msg []byte) {
 		rpc.Call(context.Background(), "PushRoomMsg", pushRoomMsgReq, reply)
 		logrus.Infof("reply %s", reply.Msg)
 	}
+
+	//持久化 data persistence
+	rpcclient.GetLogicRpcClient().PersistencePushRoom(context.Background(), pushRoomMsgReq)
 }
 
 func (task *Task) broadcastRoomCountToConnect(roomId, count int) {

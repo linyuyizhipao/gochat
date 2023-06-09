@@ -10,7 +10,7 @@ import "gochat/proto"
 type Operator interface {
 	Connect(conn *proto.ConnectRequest) (int, error)
 	DisConnect(disConn *proto.DisConnectRequest) (err error)
-	Push(req *proto.Send) (code int, msg string)
+	PushMsg(req *proto.Send) (code int, msg string)
 	PushRoom(req *proto.Send) (code int, msg string)
 }
 
@@ -31,9 +31,9 @@ func (o *DefaultOperator) DisConnect(disConn *proto.DisConnectRequest) (err erro
 	return
 }
 
-func (o *DefaultOperator) Push(sendMsg *proto.Send) (code int, msg string) {
+func (o *DefaultOperator) PushMsg(sendMsg *proto.Send) (code int, msg string) {
 	rpcConnect := new(RpcConnect)
-	code, msg = rpcConnect.Push(sendMsg)
+	code, msg = rpcConnect.PushMsg(sendMsg)
 	return
 }
 

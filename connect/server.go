@@ -192,7 +192,8 @@ func (s *Server) Push(sendMsg proto.SendWebSocket) (err error) {
 		RoomId:       sendMsg.RoomId,
 		Op:           config.OpSingleSend,
 	}
-	code, rpcMsg := s.operator.Push(req)
+
+	code, rpcMsg := s.operator.PushMsg(req)
 	if code == tools.CodeFail {
 		logrus.Errorf("Server Push code: %v; rpcMsg=%v", code, rpcMsg)
 		return
@@ -209,7 +210,7 @@ func (s *Server) PushRoom(sendMsg proto.SendWebSocket) (err error) {
 		Op:           config.OpRoomSend,
 	}
 
-	code, rpcMsg := s.operator.Push(req)
+	code, rpcMsg := s.operator.PushRoom(req)
 	if code == tools.CodeFail {
 		logrus.Errorf("Server PushRoom code: %v; rpcMsg=%v", code, rpcMsg)
 		return

@@ -53,3 +53,10 @@ func Sha1(s string) (str string) {
 func GetNowDateTime() string {
 	return time.Unix(time.Now().Unix(), 0).Format("2006-01-02 15:04:05")
 }
+
+func GenerateUserMsgKey(userId, toUserId int) string {
+	if userId < toUserId {
+		return fmt.Sprintf("%d_%d", userId, toUserId)
+	}
+	return fmt.Sprintf("%d_%d", toUserId, userId)
+}

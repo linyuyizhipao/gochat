@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/go-redis/redis"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"gochat/config"
@@ -353,6 +354,65 @@ func (rpc *RpcLogic) DisConnect(ctx context.Context, args *proto.DisConnectReque
 	}
 	if err = logic.RedisPublishRoomInfo(args.RoomId, len(roomUserInfo), roomUserInfo, nil); err != nil {
 		logrus.Warnf("publish RedisPublishRoomCount err: %s", err.Error())
+		return
+	}
+	return
+}
+
+func (rpc *RpcLogic) PersistencePush(ctx context.Context, pushMsgRequest *proto.PushMsgRequest, reply *proto.SuccessReply) (err error) {
+	userId := pushMsgRequest.UserId
+	seqId := pushMsgRequest.Msg.SeqId
+	body := pushMsgRequest.Msg.Body
+
+	sendMsg := &proto.Send{}
+	if err := json.Unmarshal(body, sendMsg); err != nil {
+		logrus.Infof("PersistencePush json.Unmarshal err:%v ", err)
+	}
+	msgId, err := strconv.ParseInt(seqId, 10, 64)
+
+	persistenceKey := fmt.Sprintf(config.RedisPushPersistence, tools.GenerateUserMsgKey(userId, sendMsg.ToUserId))
+	d := redis.Z{
+		Score:  float64(msgId),
+		Member: string(body),
+	}
+	pipe := RedisClient.Pipeline()
+	pipe.ZAdd(persistenceKey, d)
+	pipe.ZAdd(config.RedisPersistenceKeys, redis.Z{
+		Score:  float64(time.Now().Unix()),
+		Member: persistenceKey,
+	})
+	_, err = pipe.Exec()
+	if err != nil {
+		logrus.Infof("PersistencePush Exec err:%v ", err)
+		return
+	}
+	return
+}
+
+func (rpc *RpcLogic) PersistencePushRoom(ctx context.Context, pushRoomMsgRequest *proto.PushRoomMsgRequest, reply *proto.SuccessReply) (err error) {
+	roomId := pushRoomMsgRequest.RoomId
+	seqId := pushRoomMsgRequest.Msg.SeqId
+	body := pushRoomMsgRequest.Msg.Body
+
+	sendMsg := &proto.Send{}
+	if err := json.Unmarshal(body, sendMsg); err != nil {
+		logrus.Infof(" PersistencePushRoom json.Unmarshal err:%v ", err)
+	}
+	msgId, err := strconv.ParseInt(seqId, 10, 64)
+	d := redis.Z{
+		Score:  float64(msgId),
+		Member: string(body),
+	}
+	persistenceKey := fmt.Sprintf(config.RedisPushRoomPersistence, roomId)
+	pipe := RedisClient.Pipeline()
+	pipe.ZAdd(persistenceKey, d)
+	pipe.ZAdd(config.RedisPersistenceKeys, redis.Z{
+		Score:  float64(time.Now().Unix()),
+		Member: persistenceKey,
+	})
+	_, err = pipe.Exec()
+	if err != nil {
+		logrus.Infof("PersistencePushRoom Exec err:%v ", err)
 		return
 	}
 	return

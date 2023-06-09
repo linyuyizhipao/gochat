@@ -21,10 +21,6 @@ import (
 
 const maxInt = 1<<31 - 1
 
-func init() {
-	rpc.InitLogicRpcClient()
-}
-
 func (c *Connect) InitTcpServer() error {
 	aTcpAddr := strings.Split(config.Conf.Connect.ConnectTcp.Bind, ",")
 	cpuNum := config.Conf.Connect.ConnectBucket.CpuNum

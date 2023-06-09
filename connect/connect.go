@@ -29,13 +29,9 @@ func (c *Connect) Run() {
 	// get Connect layer config
 	connectConfig := config.Conf.Connect
 
-	//set the maximum number of CPUs that can be executing
-	runtime.GOMAXPROCS(connectConfig.ConnectBucket.CpuNum)
+	//设置cpu个数为核数即可
+	runtime.GOMAXPROCS(runtime.NumCPU())
 
-	//init logic layer rpc client, call logic layer rpc server
-	if err := c.InitLogicRpcClient(); err != nil {
-		logrus.Panicf("InitLogicRpcClient err:%s", err.Error())
-	}
 	//init Connect layer rpc server, logic client will call this
 	Buckets := make([]*Bucket, connectConfig.ConnectBucket.CpuNum)
 	for i := 0; i < connectConfig.ConnectBucket.CpuNum; i++ {
@@ -75,10 +71,6 @@ func (c *Connect) RunTcp() {
 	//set the maximum number of CPUs that can be executing
 	runtime.GOMAXPROCS(connectConfig.ConnectBucket.CpuNum)
 
-	//init logic layer rpc client, call logic layer rpc server
-	if err := c.InitLogicRpcClient(); err != nil {
-		logrus.Panicf("InitLogicRpcClient err:%s", err.Error())
-	}
 	//init Connect layer rpc server, logic client will call this
 	Buckets := make([]*Bucket, connectConfig.ConnectBucket.CpuNum)
 	for i := 0; i < connectConfig.ConnectBucket.CpuNum; i++ {

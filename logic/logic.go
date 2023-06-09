@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
-	"gochat/config"
 	"runtime"
 )
 
@@ -23,9 +22,7 @@ func New() *Logic {
 
 func (logic *Logic) Run() {
 	//read config
-	logicConfig := config.Conf.Logic
-
-	runtime.GOMAXPROCS(logicConfig.LogicBase.CpuNum)
+	runtime.GOMAXPROCS(runtime.NumCPU())
 	logic.ServerId = fmt.Sprintf("logic-%s", uuid.New().String())
 	//init publish redis
 	if err := logic.InitPublishRedisClient(); err != nil {

@@ -25,6 +25,9 @@ const (
 	RedisPrefix                = "gochat_"
 	RedisRoomPrefix            = "gochat_room_"
 	RedisRoomOnlinePrefix      = "gochat_room_online_count_"
+	RedisPushPersistence       = "gochat_push_persistence_%s"
+	RedisPushRoomPersistence   = "gochat_push_room_persistence_%d"
+	RedisPersistenceKeys       = "gochat_persistence_keys" //用户定期落db的key
 )
 
 // proto
