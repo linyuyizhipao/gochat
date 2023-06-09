@@ -54,6 +54,14 @@ func GetNowDateTime() string {
 	return time.Unix(time.Now().Unix(), 0).Format("2006-01-02 15:04:05")
 }
 
+func ParseNowDateTime(t string) int64 {
+	nowT, err := time.Parse("2006-01-02 15:04:05", t)
+	if err != nil {
+		return 0
+	}
+	return nowT.Unix()
+}
+
 func GenerateUserMsgKey(userId, toUserId int) string {
 	if userId < toUserId {
 		return fmt.Sprintf("%d_%d", userId, toUserId)

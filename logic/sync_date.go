@@ -10,6 +10,8 @@ import (
 	"gochat/db"
 	"gochat/logic/dao"
 	"gochat/proto"
+	"gochat/tools"
+	"strings"
 	"time"
 )
 
@@ -22,8 +24,8 @@ type syncData struct {
 func (s *syncData) SyncLoop(ctx context.Context) {
 
 	for {
-		time.Sleep(time.Hour)
 		s.sync(ctx)
+		time.Sleep(time.Minute)
 	}
 
 }
@@ -35,15 +37,14 @@ func (s *syncData) sync(ctx context.Context) {
 
 	for {
 
-		key := config.RedisPersistenceKeys
 		opt := redis.ZRangeBy{
 			Min:    "0",
-			Max:    cast.ToString(time.Now().Add(-time.Duration(days) * time.Hour * 24)),
+			Max:    cast.ToString(time.Now().Add(-time.Duration(days) * time.Hour * 24).Unix()),
 			Offset: offset,
 			Count:  count,
 		}
 		offset += count
-		zs := RedisClient.ZRangeByScoreWithScores(key, opt).Val()
+		zs := RedisClient.ZRangeByScoreWithScores(config.RedisPersistenceKeys, opt).Val()
 		persistenceKeys := []string{}
 
 		if len(zs) <= 0 {
@@ -55,14 +56,14 @@ func (s *syncData) sync(ctx context.Context) {
 		}
 
 		for _, persistenceKey := range persistenceKeys {
-			switch persistenceKey {
-			case config.RedisPushRoomPersistence:
+			if strings.Contains(persistenceKey, "room") {
 				s.syncPersistencePushRoomKey(ctx, persistenceKey)
-			case config.RedisPushPersistence:
+			} else {
 				s.syncPersistencePushKey(ctx, persistenceKey)
 			}
+
 			ss := time.Now().Add(time.Duration(days) * time.Hour * 24).Unix() //每同步一次，下次再同步就是3天后了，这里有个问题，如果三天内触发了最大值，也需要立即flush db才行，这个后面再实现吧
-			RedisClient.ZAdd(key, redis.Z{
+			RedisClient.ZAdd(config.RedisPersistenceKeys, redis.Z{
 				Score:  float64(ss),
 				Member: persistenceKey,
 			})
@@ -78,11 +79,12 @@ func (s *syncData) syncPersistencePushRoomKey(ctx context.Context, persistenceKe
 	days := 3
 	offset := int64(0)
 	count := int64(30)
+	minTime := time.Now().Add(-time.Duration(days) * time.Hour * 24).Unix()
 	for {
 
 		persistenceOpt := redis.ZRangeBy{
 			Min:    "0",
-			Max:    cast.ToString(time.Now().Add(-time.Duration(days) * time.Hour * 24)),
+			Max:    "+inf",
 			Offset: offset,
 			Count:  count,
 		}
@@ -91,6 +93,7 @@ func (s *syncData) syncPersistencePushRoomKey(ctx context.Context, persistenceKe
 		roomMessages := []*dao.RoomMessage{}
 
 		if len(zs) <= 0 {
+			RedisClient.ZRem(config.RedisPersistenceKeys, persistenceKey)
 			break
 		}
 
@@ -102,7 +105,10 @@ func (s *syncData) syncPersistencePushRoomKey(ctx context.Context, persistenceKe
 			if err := json.Unmarshal([]byte(memberStr), sendMsg); err != nil {
 				logrus.Infof("PersistencePush json.Unmarshal err:%v ", err)
 			}
-
+			createTime := tools.ParseNowDateTime(sendMsg.CreateTime)
+			if createTime > minTime {
+				continue //后面可适配成return
+			}
 			roomMessage := &dao.RoomMessage{
 				Rid:        cast.ToInt64(sendMsg.RoomId),
 				SeqID:      seqId,
@@ -112,6 +118,7 @@ func (s *syncData) syncPersistencePushRoomKey(ctx context.Context, persistenceKe
 				CreateTime: time.Now(),
 				UpdateTime: time.Now(),
 			}
+			RedisClient.ZRem(persistenceKey, memberStr)
 			roomMessages = append(roomMessages, roomMessage)
 		}
 
