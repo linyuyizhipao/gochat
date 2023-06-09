@@ -7,6 +7,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"gochat/api"
 	"gochat/config"
 	"gochat/connect"
@@ -21,6 +22,7 @@ import (
 func main() {
 	module := config.Conf.Module
 	fmt.Println(fmt.Sprintf("start run %s module", module))
+	logrus.SetReportCaller(true)
 	switch module {
 	case "logic":
 		logic.New().Run()
