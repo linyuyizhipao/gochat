@@ -70,3 +70,16 @@ KEY `idx_sessionid` (`rid`,`seq_id`)
         PARTITION `p_202406` VALUES LESS THAN (UNIX_TIMESTAMP('2024-06-01')),
         PARTITION `p_other` VALUES LESS THAN (MAXVALUE)
         );
+
+
+
+CREATE TABLE `user_chat_session` (
+    `id` bigint(20) NOT NULL AUTO_INCREMENT,
+    `min_uid` bigint(20) NOT NULL default 0,
+    `max_uid` bigint(20) NOT NULL default 0,
+    `create_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY (`min_uid`,`max_uid`)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='用户单聊会话id表'
+PARTITION BY HASH(id) 
+PARTITIONS 10;

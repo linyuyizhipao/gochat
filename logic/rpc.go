@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"gochat/config"
+	"gochat/db"
 	"gochat/logic/dao"
 	"gochat/proto"
 	"gochat/tools"
@@ -29,7 +30,12 @@ var (
 func NewRpcLogic() *RpcLogic {
 	onceRpcLogicOnce.Do(func() {
 		onceRpcLogic = &RpcLogic{
-			syncDataPersistence: syncData{},
+			syncDataPersistence: syncData{
+				days:   3,
+				offset: 0,
+				count:  30,
+				db:     db.GetDb(db.DefaultDbname),
+			},
 		}
 		go func() {
 			onceRpcLogic.syncDataPersistence.SyncLoop(context.Background())

@@ -7,15 +7,19 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cast"
 	"gochat/config"
-	"gochat/db"
 	"gochat/logic/dao"
 	"gochat/proto"
 	"gochat/tools"
+	"gorm.io/gorm"
 	"strings"
 	"time"
 )
 
 type syncData struct {
+	days   int   //只保留最近几天的聊天记录
+	offset int64 //开始的offset
+	count  int64 //每页数量
+	db     *gorm.DB
 }
 
 // 一个小时执行一次
@@ -31,9 +35,9 @@ func (s *syncData) SyncLoop(ctx context.Context) {
 }
 
 func (s *syncData) sync(ctx context.Context) {
-	days := 3
-	offset := int64(0)
-	count := int64(30)
+	days := s.days
+	offset := s.offset
+	count := s.count
 
 	for {
 
@@ -75,10 +79,9 @@ func (s *syncData) sync(ctx context.Context) {
 }
 
 func (s *syncData) syncPersistencePushRoomKey(ctx context.Context, persistenceKey string) {
-	db := db.GetDb(db.DefaultDbname)
-	days := 3
-	offset := int64(0)
-	count := int64(30)
+	days := s.days
+	offset := s.offset
+	count := s.count
 	minTime := time.Now().Add(-time.Duration(days) * time.Hour * 24).Unix()
 	for {
 
@@ -122,17 +125,16 @@ func (s *syncData) syncPersistencePushRoomKey(ctx context.Context, persistenceKe
 			roomMessages = append(roomMessages, roomMessage)
 		}
 
-		db.WithContext(ctx).CreateInBatches(roomMessages, len(roomMessages))
+		s.db.WithContext(ctx).CreateInBatches(roomMessages, len(roomMessages))
 
 	}
 
 }
 
 func (s *syncData) syncPersistencePushKey(ctx context.Context, persistenceKey string) {
-	db := db.GetDb(db.DefaultDbname)
-	days := 3
-	offset := int64(0)
-	count := int64(30)
+	days := s.days
+	offset := s.offset
+	count := s.count
 	for {
 
 		persistenceOpt := redis.ZRangeBy{
@@ -144,9 +146,35 @@ func (s *syncData) syncPersistencePushKey(ctx context.Context, persistenceKey st
 		offset += count
 		zs := RedisClient.ZRangeByScoreWithScores(persistenceKey, persistenceOpt).Val()
 		userMessages := []*dao.UserMessage{}
+		userMsgSessions := []*dao.UserMsgSession{}
 
-		if len(zs) <= 0 {
-			break
+		minUid, maxUid := int64(0), int64(0)
+		for _, z := range zs {
+			memberStr := cast.ToString(z.Member)
+			sendMsg := &proto.Send{}
+			if err := json.Unmarshal([]byte(memberStr), sendMsg); err != nil {
+				logrus.Infof("PersistencePush json.Unmarshal err:%v ", err)
+			}
+			minUid, maxUid = cast.ToInt64(sendMsg.FromUserId), cast.ToInt64(sendMsg.ToUserId)
+			if minUid > maxUid {
+				minUid, maxUid = maxUid, minUid
+			}
+		}
+		if minUid <= 0 || maxUid <= 0 {
+			logrus.Error("PersistencePush minUid maxUid is empty")
+			continue
+		}
+
+		userMsgSession := &dao.UserMsgSession{
+			MinUid:     minUid,
+			MaxUid:     maxUid,
+			CreateTime: time.Now(),
+		}
+		s.db.WithContext(ctx).Where("min_uid", minUid).Where("max_uid", maxUid).First(userMsgSession)
+		sessionId := userMsgSession.ID
+		if sessionId <= 0 {
+			s.db.WithContext(ctx).Create(userMsgSession)
+			sessionId = userMsgSession.ID
 		}
 
 		for _, z := range zs {
@@ -159,7 +187,7 @@ func (s *syncData) syncPersistencePushKey(ctx context.Context, persistenceKey st
 			}
 
 			userMessage := &dao.UserMessage{
-				SessionID:  cast.ToInt64(sendMsg.RoomId),
+				SessionID:  sessionId,
 				SeqID:      seqId,
 				UID:        cast.ToInt64(sendMsg.FromUserId),
 				ToUID:      cast.ToInt64(sendMsg.ToUserId),
@@ -168,9 +196,10 @@ func (s *syncData) syncPersistencePushKey(ctx context.Context, persistenceKey st
 				UpdateTime: time.Now(),
 			}
 			userMessages = append(userMessages, userMessage)
+			userMsgSessions = append(userMsgSessions, userMsgSession)
 		}
 
-		db.WithContext(ctx).CreateInBatches(userMessages, len(userMessages))
+		s.db.WithContext(ctx).CreateInBatches(userMessages, len(userMessages))
 
 	}
 
