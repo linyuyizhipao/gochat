@@ -31,10 +31,10 @@ func NewRpcLogic() *RpcLogic {
 	onceRpcLogicOnce.Do(func() {
 		onceRpcLogic = &RpcLogic{
 			syncDataPersistence: syncData{
-				days:   3,
-				offset: 0,
-				count:  30,
-				db:     db.GetDb(db.DefaultDbname),
+				LastTime: time.Hour * 24 * 3,
+				offset:   0,
+				count:    30,
+				db:       db.GetDb(db.DefaultDbname),
 			},
 		}
 		go func() {

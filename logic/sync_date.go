@@ -16,10 +16,10 @@ import (
 )
 
 type syncData struct {
-	days   int   //只保留最近几天的聊天记录
-	offset int64 //开始的offset
-	count  int64 //每页数量
-	db     *gorm.DB
+	LastTime time.Duration //只保留多久之内的聊天记录
+	offset   int64         //开始的offset
+	count    int64         //每页数量
+	db       *gorm.DB
 }
 
 // 一个小时执行一次
@@ -29,13 +29,12 @@ func (s *syncData) SyncLoop(ctx context.Context) {
 
 	for {
 		s.sync(ctx)
-		time.Sleep(time.Hour * 24 * time.Duration(s.days))
+		time.Sleep(s.LastTime)
 	}
 
 }
 
 func (s *syncData) sync(ctx context.Context) {
-	days := s.days
 	offset := s.offset
 	count := s.count
 
@@ -43,7 +42,7 @@ func (s *syncData) sync(ctx context.Context) {
 
 		opt := redis.ZRangeBy{
 			Min:    "0",
-			Max:    cast.ToString(time.Now().Add(-time.Duration(days) * time.Hour * 24).Unix()),
+			Max:    cast.ToString(time.Now().Add(-s.LastTime).Unix()),
 			Offset: offset,
 			Count:  count,
 		}
@@ -71,7 +70,7 @@ func (s *syncData) sync(ctx context.Context) {
 				continue
 			}
 
-			ss := time.Now().Add(time.Duration(days) * time.Hour * 24).Unix() //每同步一次，下次再同步就是3天后了，这里有个问题，如果三天内触发了最大值，也需要立即flush db才行，这个后面再实现吧
+			ss := time.Now().Add(s.LastTime).Unix() //每同步一次，下次再同步就是3天后了，这里有个问题，如果三天内触发了最大值，也需要立即flush db才行，这个后面再实现吧
 			RedisClient.ZAdd(config.RedisPersistenceKeys, redis.Z{
 				Score:  float64(ss),
 				Member: persistenceKey,
@@ -183,7 +182,7 @@ func (s *syncData) getMinUidMaxUid(zs []redis.Z) (minUid, maxUid int64) {
 	if err := json.Unmarshal([]byte(memberStr), sendMsg); err != nil {
 		logrus.Infof("PersistencePush json.Unmarshal err:%v ", err)
 	}
-	if tools.ParseNowDateTime(sendMsg.CreateTime) > time.Now().Add(-time.Duration(s.days)*time.Hour*24).Unix() {
+	if tools.ParseNowDateTime(sendMsg.CreateTime) > time.Now().Add(-s.LastTime).Unix() {
 		return
 	}
 
@@ -204,7 +203,7 @@ func (s *syncData) getRoomMessages(zs []redis.Z) (roomMessages []*dao.RoomMessag
 		if err := json.Unmarshal([]byte(memberStr), sendMsg); err != nil {
 			logrus.Infof("PersistencePush getRoomMessages json.Unmarshal err:%v ", err)
 		}
-		if tools.ParseNowDateTime(sendMsg.CreateTime) > time.Now().Add(-time.Duration(s.days)*time.Hour*24).Unix() {
+		if tools.ParseNowDateTime(sendMsg.CreateTime) > time.Now().Add(-s.LastTime).Unix() {
 			continue
 		}
 
@@ -233,7 +232,7 @@ func (s *syncData) getPushMessages(sessionId int64, zs []redis.Z) (userMessages 
 			logrus.Infof("PersistencePush json.Unmarshal err:%v ", err)
 		}
 
-		if tools.ParseNowDateTime(sendMsg.CreateTime) > time.Now().Add(-time.Duration(s.days)*time.Hour*24).Unix() {
+		if tools.ParseNowDateTime(sendMsg.CreateTime) > time.Now().Add(-s.LastTime).Unix() {
 			continue
 		}
 		members = append(members, z.Member)
