@@ -13,6 +13,7 @@ import (
 	"gochat/proto"
 	"gochat/tools"
 	"strconv"
+	"time"
 )
 
 type FormPush struct {
@@ -53,6 +54,7 @@ func Push(c *gin.Context) {
 		ToUserName:   toUserName,
 		RoomId:       roomId,
 		Op:           config.OpSingleSend,
+		CreateTime:   time.Now().Format("2006-01-02 15:04:05"),
 	}
 	code, rpcMsg := rpc.RpcLogicObj.Push(req)
 	if code == tools.CodeFail {

@@ -23,7 +23,12 @@ run:
 	nohup target/gochat -module connect_websocket -conf="./target/config/$(Mode)" 2>&1 > target/log/connect_websocket.log &
 	nohup target/gochat -module api -conf="./target/config/$(Mode)" 2>&1 > target/log/api.log &
 	nohup target/gochat -module site -conf="./target/config/$(Mode)" 2>&1 > target/log/site.log &
+
+
+.PHONY: task
+task:
 	nohup target/gochat -module task -conf="./target/config/$(Mode)" 2>&1 > target/log/task.log &
+
 
 stop:
 	pkill -f target/gochat
