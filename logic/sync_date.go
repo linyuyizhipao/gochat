@@ -93,12 +93,14 @@ func (s *syncData) syncPersistencePushRoomKey(ctx context.Context, persistenceKe
 			Offset: offset,
 			Count:  count,
 		}
-		offset += count
 		zs := RedisClient.ZRangeByScoreWithScores(persistenceKey, persistenceOpt).Val()
 		roomMessages, members := s.getRoomMessages(zs)
 		if len(roomMessages) <= 0 {
+			logrus.Infof("PersistencePush0 room  roomMessages=%+v zs:%+v ", roomMessages, zs)
 			return
 		}
+		offset += count
+		logrus.Infof("PersistencePush room  roomMessages=%+v zs:%+v ", roomMessages, zs)
 
 		//批量落库
 		err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -201,9 +203,10 @@ func (s *syncData) getRoomMessages(zs []redis.Z) (roomMessages []*dao.RoomMessag
 
 		sendMsg := &proto.Send{}
 		if err := json.Unmarshal([]byte(memberStr), sendMsg); err != nil {
-			logrus.Infof("PersistencePush getRoomMessages json.Unmarshal err:%v ", err)
+			logrus.Infof("PersistencePush getRoomMessages json.Unmarshal err:%v;memberStr=%s ", err, memberStr)
 		}
-		if tools.ParseNowDateTime(sendMsg.CreateTime) > time.Now().Add(-s.LastTime).Unix() {
+		tt := tools.ParseNowDateTime(sendMsg.CreateTime)
+		if tt > time.Now().Add(-s.LastTime).Unix() {
 			continue
 		}
 

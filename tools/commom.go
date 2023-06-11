@@ -55,7 +55,7 @@ func GetNowDateTime() string {
 }
 
 func ParseNowDateTime(t string) int64 {
-	nowT, err := time.Parse("2006-01-02 15:04:05", t)
+	nowT, err := time.ParseInLocation("2006-01-02 15:04:05", t, time.Local)
 	if err != nil {
 		return 0
 	}
