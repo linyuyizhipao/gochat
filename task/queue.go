@@ -33,7 +33,7 @@ func (task *Task) InitQueueRedisClient() (err error) {
 			if err != nil && err != redis.Nil {
 				logrus.Errorf("task queue block timeout,no msg err:%s", err.Error())
 			}
-			logrus.Infof("InitQueueRedisClient len(result)=%d,result=%v", len(result), result)
+			logrus.Debugf("InitQueueRedisClient len(result)=%d,result=%v", len(result), result)
 			if len(result) >= 2 {
 				task.Push(result[1])
 			}

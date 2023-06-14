@@ -23,6 +23,11 @@ func main() {
 	module := config.Conf.Module
 	fmt.Println(fmt.Sprintf("start run %s module", module))
 	logrus.SetReportCaller(true)
+	levelLog := logrus.InfoLevel
+	if module == "dev" {
+		levelLog = logrus.DebugLevel
+	}
+	logrus.SetLevel(levelLog)
 	switch module {
 	case "logic":
 		logic.New().Run()
