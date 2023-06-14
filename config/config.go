@@ -147,9 +147,14 @@ type CommonRedis struct {
 	Db            int    `mapstructure:"db"`
 }
 
+type CommonNode struct {
+	NodeId int64 `mapstructure:"node_id"`
+}
+
 type Common struct {
 	CommonEtcd  CommonEtcd  `mapstructure:"common-etcd"`
 	CommonRedis CommonRedis `mapstructure:"common-redis"`
+	CommonNode  CommonNode  `mapstructure:"common-node"`
 }
 
 type ConnectBase struct {

@@ -393,8 +393,7 @@ func (rpc *RpcLogic) PersistencePush(ctx context.Context, pushMsgRequest *proto.
 	if err := json.Unmarshal(body, sendMsg); err != nil {
 		logrus.Infof("PersistencePush json.Unmarshal err:%v ", err)
 	}
-	msgId, err := strconv.ParseInt(seqId, 10, 64)
-
+	msgId := seqId
 	persistenceKey := fmt.Sprintf(config.RedisPushPersistence, tools.GenerateUserMsgKey(userId, sendMsg.ToUserId))
 	d := redis.Z{
 		Score:  float64(msgId),
@@ -423,7 +422,7 @@ func (rpc *RpcLogic) PersistencePushRoom(ctx context.Context, pushRoomMsgRequest
 	if err := json.Unmarshal(body, sendMsg); err != nil {
 		logrus.Infof(" PersistencePushRoom json.Unmarshal err:%v ", err)
 	}
-	msgId, err := strconv.ParseInt(seqId, 10, 64)
+	msgId := seqId
 	d := redis.Z{
 		Score:  float64(msgId),
 		Member: string(body),

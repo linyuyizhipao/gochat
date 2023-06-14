@@ -11,18 +11,33 @@ import (
 	"encoding/base64"
 	"fmt"
 	"github.com/bwmarrin/snowflake"
+	"github.com/sirupsen/logrus"
 	"io"
 	"time"
 )
 
 const SessionPrefix = "sess_"
 
-func GetSnowflakeId() string {
-	//default node id eq 1,this can modify to different serverId node
-	node, _ := snowflake.NewNode(1)
-	// Generate a snowflake ID.
-	id := node.Generate().String()
-	return id
+var (
+	nodeMap = map[int64]*snowflake.Node{}
+)
+
+func GetSnowflakeId(nodeIds ...int64) int64 {
+	nodeId := int64(1) //default node id eq 1,this can modify to different serverId node
+	if len(nodeIds) <= 0 {
+		nodeId = nodeIds[0]
+	}
+
+	if node, ok := nodeMap[nodeId]; ok {
+		return node.Generate().Int64()
+	}
+	node, err := snowflake.NewNode(nodeId)
+	if err != nil {
+		logrus.Errorf("GetSnowflakeId nodeId=%d;err=%v", nodeId, err)
+		return 0
+	}
+	nodeMap[nodeId] = node
+	return node.Generate().Int64()
 }
 
 func GetRandomToken(length int) string {

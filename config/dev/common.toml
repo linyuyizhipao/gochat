@@ -11,3 +11,6 @@ connectionTimeout = 5
 redisAddress = "127.0.0.1:6379"
 redisPassword = ""
 db = 0
+
+[common-node]
+nodeId = 1

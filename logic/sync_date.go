@@ -133,7 +133,7 @@ func (s *syncData) syncPersistencePushKey(ctx context.Context, persistenceKey st
 		minUid, maxUid := s.getMinUidMaxUid(zs)
 		if minUid <= 0 || maxUid <= 0 {
 			//正序拿的，如果minUid没拿到，说明没有需要持久化的
-			logrus.Errorf("PersistencePush minUid maxUid is empty persistenceKey=%s", persistenceKey)
+			logrus.Errorf("PersistencePush minUid maxUid is empty persistenceKey=%s；minUid=%d,maxUid=%d", persistenceKey, minUid, maxUid)
 			return
 		}
 
