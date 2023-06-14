@@ -24,7 +24,7 @@ var (
 
 func GetSnowflakeId(nodeIds ...int64) int64 {
 	nodeId := int64(1) //default node id eq 1,this can modify to different serverId node
-	if len(nodeIds) <= 0 {
+	if len(nodeIds) > 0 {
 		nodeId = nodeIds[0]
 	}
 

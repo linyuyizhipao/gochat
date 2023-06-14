@@ -214,7 +214,6 @@ func (s *syncData) getRoomMessages(zs []redis.Z) (roomMessages []*dao.RoomMessag
 			Rid:        cast.ToInt64(sendMsg.RoomId),
 			SeqID:      seqId,
 			UID:        cast.ToInt64(sendMsg.FromUserId),
-			ToUID:      cast.ToInt64(sendMsg.ToUserId),
 			Content:    sendMsg.Msg,
 			CreateTime: time.Now(),
 			UpdateTime: time.Now(),

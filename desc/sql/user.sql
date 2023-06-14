@@ -46,7 +46,6 @@ CREATE TABLE `room_message` (
 `rid` bigint(20) NOT NULL default 0,
 `seq_id` bigint(20) NOT NULL default 0,
 `uid` bigint(20) NOT NULL default 0,
-`to_uid` bigint(20) NOT NULL default 0,
 `content` text NOT NULL,
 `create_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 `update_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
