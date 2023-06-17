@@ -175,7 +175,6 @@ func (task *Task) watchServicesChange(d client.ServiceDiscovery) {
 }
 
 func (task *Task) pushSingleToConnect(serverId string, userId int, msg []byte) (reply *proto.SuccessReply) {
-	logrus.Infof("pushSingleToConnect Body %s", string(msg))
 	reply = &proto.SuccessReply{}
 	pushMsgReq := &proto.PushMsgRequest{
 		UserId: userId,
@@ -187,12 +186,13 @@ func (task *Task) pushSingleToConnect(serverId string, userId int, msg []byte) (
 		},
 	}
 	connectRpc, err := RClient.GetRpcClientByServerId(serverId)
-	if err != nil {
-		logrus.Infof("get rpc client err %v", err)
-	}
-	err = connectRpc.Call(context.Background(), "PushSingleMsg", pushMsgReq, reply)
-	if err != nil {
-		logrus.Infof("pushSingleToConnect Call err %v", err)
+	if err == nil {
+		err = connectRpc.Call(context.Background(), "PushSingleMsg", pushMsgReq, reply)
+		if err != nil {
+			logrus.Errorf("pushSingleToConnect Call err %v", err)
+		}
+	} else {
+		logrus.Warningf("GetRpcClientByServerId2 Call err %v", err)
 	}
 
 	//持久化 data persistence

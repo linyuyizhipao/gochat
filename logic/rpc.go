@@ -31,7 +31,7 @@ func NewRpcLogic() *RpcLogic {
 	onceRpcLogicOnce.Do(func() {
 		onceRpcLogic = &RpcLogic{
 			syncDataPersistence: syncData{
-				LastTime: time.Hour * 24 * 3,
+				LastTime: time.Second * 10,
 				offset:   0,
 				count:    30,
 				db:       db.GetDb(db.DefaultDbname),
@@ -221,6 +221,8 @@ func (rpc *RpcLogic) Push(ctx context.Context, args *proto.Send, reply *proto.Su
 		logrus.Errorf("logic,push parse int fail:%s", err.Error())
 		return
 	}
+	logrus.Info("logic RedisPublishChannel")
+
 	err = logic.RedisPublishChannel(serverIdStr, sendData.ToUserId, bodyBytes)
 	if err != nil {
 		logrus.Errorf("logic,redis publish err: %s", err.Error())
@@ -390,14 +392,25 @@ func (rpc *RpcLogic) PersistencePush(ctx context.Context, pushMsgRequest *proto.
 	body := pushMsgRequest.Msg.Body
 
 	sendMsg := &proto.Send{}
+	persistenceData := &proto.PersistenceData{}
 	if err := json.Unmarshal(body, sendMsg); err != nil {
 		logrus.Infof("PersistencePush json.Unmarshal err:%v ", err)
 	}
-	msgId := seqId
+	persistenceData.Msg = sendMsg.Msg
+	persistenceData.RoomId = sendMsg.RoomId
+	persistenceData.FromUserId = sendMsg.FromUserId
+	persistenceData.ToUserId = sendMsg.ToUserId
+	persistenceData.Op = sendMsg.Op
+	persistenceData.MsgId = seqId
+	perDataBody, err := json.Marshal(persistenceData)
+	if err != nil {
+		logrus.Errorf("PersistencePush json.Marshal err:%v ", err)
+		return
+	}
 	persistenceKey := fmt.Sprintf(config.RedisPushPersistence, tools.GenerateUserMsgKey(userId, sendMsg.ToUserId))
 	d := redis.Z{
-		Score:  float64(msgId),
-		Member: string(body),
+		Score:  float64(persistenceData.MsgId),
+		Member: string(perDataBody),
 	}
 	pipe := RedisClient.Pipeline()
 	pipe.ZAdd(persistenceKey, d)
@@ -410,6 +423,7 @@ func (rpc *RpcLogic) PersistencePush(ctx context.Context, pushMsgRequest *proto.
 		logrus.Infof("PersistencePush Exec err:%v ", err)
 		return
 	}
+	logrus.Infof("PersistencePush pushRoomMsgRequest,userId=%d,seqId=%d,body=%+v ", userId, seqId, body)
 	return
 }
 
@@ -439,5 +453,6 @@ func (rpc *RpcLogic) PersistencePushRoom(ctx context.Context, pushRoomMsgRequest
 		logrus.Infof("PersistencePushRoom Exec err:%v ", err)
 		return
 	}
+	logrus.Infof("PersistencePushRoom pushRoomMsgRequest%+v ", pushRoomMsgRequest)
 	return
 }

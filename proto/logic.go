@@ -109,3 +109,13 @@ type SendWebSocket struct {
 	CreateTime   string `json:"createTime"`
 	AuthToken    string `json:"authToken"` //仅tcp时使用，发送msg时带上
 }
+
+type PersistenceData struct {
+	Msg        string `json:"msg"`
+	FromUserId int    `json:"fromUserId"`
+	ToUserId   int    `json:"toUserId"`
+	RoomId     int    `json:"roomId"`
+	Op         int    `json:"op"`
+	CreateTime string `json:"createTime"`
+	MsgId      int64  `json:"msgId"`
+}

@@ -6,9 +6,11 @@ import (
 )
 
 func TestGetSessionIdByUserId(t *testing.T) {
+
+	aa := map[int64]bool{}
 	for i := 0; i < 5000; i++ {
 		id := GetSnowflakeId()
-		fmt.Println(id, "\n ")
+		aa[id] = true
 	}
-
+	fmt.Println(len(aa))
 }

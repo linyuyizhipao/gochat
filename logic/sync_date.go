@@ -199,9 +199,8 @@ func (s *syncData) getMinUidMaxUid(zs []redis.Z) (minUid, maxUid int64) {
 func (s *syncData) getRoomMessages(zs []redis.Z) (roomMessages []*dao.RoomMessage, members []interface{}) {
 	for _, z := range zs {
 		memberStr := cast.ToString(z.Member)
-		seqId := cast.ToInt64(z.Score)
 
-		sendMsg := &proto.Send{}
+		sendMsg := &proto.PersistenceData{}
 		if err := json.Unmarshal([]byte(memberStr), sendMsg); err != nil {
 			logrus.Infof("PersistencePush getRoomMessages json.Unmarshal err:%v;memberStr=%s ", err, memberStr)
 		}
@@ -212,7 +211,7 @@ func (s *syncData) getRoomMessages(zs []redis.Z) (roomMessages []*dao.RoomMessag
 
 		roomMessage := &dao.RoomMessage{
 			Rid:        cast.ToInt64(sendMsg.RoomId),
-			SeqID:      seqId,
+			SeqID:      sendMsg.MsgId,
 			UID:        cast.ToInt64(sendMsg.FromUserId),
 			Content:    sendMsg.Msg,
 			CreateTime: time.Now(),
@@ -227,9 +226,8 @@ func (s *syncData) getRoomMessages(zs []redis.Z) (roomMessages []*dao.RoomMessag
 func (s *syncData) getPushMessages(sessionId int64, zs []redis.Z) (userMessages []*dao.UserMessage, members []interface{}) {
 	for _, z := range zs {
 		memberStr := cast.ToString(z.Member)
-		seqId := cast.ToInt64(z.Score)
 
-		sendMsg := &proto.Send{}
+		sendMsg := &proto.PersistenceData{}
 		if err := json.Unmarshal([]byte(memberStr), sendMsg); err != nil {
 			logrus.Infof("PersistencePush json.Unmarshal err:%v ", err)
 		}
@@ -240,7 +238,7 @@ func (s *syncData) getPushMessages(sessionId int64, zs []redis.Z) (userMessages 
 		members = append(members, z.Member)
 		userMessage := &dao.UserMessage{
 			SessionID:  sessionId,
-			SeqID:      seqId,
+			SeqID:      sendMsg.MsgId,
 			UID:        cast.ToInt64(sendMsg.FromUserId),
 			ToUID:      cast.ToInt64(sendMsg.ToUserId),
 			Content:    sendMsg.Msg,

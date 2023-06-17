@@ -26,6 +26,8 @@ func (task *Task) InitQueueRedisClient() (err error) {
 		logrus.Infof("RedisClient Ping Result pong: %s,  err: %s", pong, err)
 	}
 	go func() {
+		logrus.Info("InitQueueRedisClient2 len(result222)")
+
 		for {
 			var result []string
 			//10s timeout
@@ -33,7 +35,7 @@ func (task *Task) InitQueueRedisClient() (err error) {
 			if err != nil && err != redis.Nil {
 				logrus.Errorf("task queue block timeout,no msg err:%s", err.Error())
 			}
-			logrus.Debugf("InitQueueRedisClient len(result)=%d,result=%v", len(result), result)
+			logrus.Infof("InitQueueRedisClient len(result)=%d,result=%v", len(result), result)
 			if len(result) >= 2 {
 				task.Push(result[1])
 			}

@@ -24,11 +24,13 @@ var pushChannel []chan *PushParams
 
 func init() {
 	pushChannel = make([]chan *PushParams, config.Conf.Task.TaskBase.PushChan)
+	for i := 0; i < len(pushChannel); i++ {
+		pushChannel[i] = make(chan *PushParams, config.Conf.Task.TaskBase.PushChanSize)
+	}
 }
 
 func (task *Task) GoPush() {
 	for i := 0; i < len(pushChannel); i++ {
-		pushChannel[i] = make(chan *PushParams, config.Conf.Task.TaskBase.PushChanSize)
 		go task.processSinglePush(pushChannel[i])
 	}
 }
