@@ -8,8 +8,8 @@ package handler
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
-	"gochat/api/rpc"
 	"gochat/config"
+	"gochat/pkg/rpcclient"
 	"gochat/proto"
 	"gochat/tools"
 	"strconv"
@@ -34,17 +34,18 @@ func Push(c *gin.Context) {
 	toUserId := formPush.ToUserId
 	toUserIdInt, _ := strconv.Atoi(toUserId)
 	getUserNameReq := &proto.GetUserInfoRequest{UserId: toUserIdInt}
-	code, toUserName := rpc.RpcLogicObj.GetUserNameByUserId(getUserNameReq)
+	code, toUserName := rpcclient.GetLogicRpcClient().GetUserNameByUserId(getUserNameReq)
 	if code == tools.CodeFail {
 		tools.FailWithMsg(c, "rpc fail get friend userName")
 		return
 	}
 	checkAuthReq := &proto.CheckAuthRequest{AuthToken: authToken}
-	code, fromUserId, fromUserName := rpc.RpcLogicObj.CheckAuth(checkAuthReq)
+	code, fromUserId, fromUserName := rpcclient.GetLogicRpcClient().CheckAuth(checkAuthReq)
 	if code == tools.CodeFail {
 		tools.FailWithMsg(c, "rpc fail get self info")
 		return
 	}
+
 	roomId := formPush.RoomId
 	req := &proto.Send{
 		Msg:          msg,
@@ -56,7 +57,7 @@ func Push(c *gin.Context) {
 		Op:           config.OpSingleSend,
 		CreateTime:   time.Now().Format("2006-01-02 15:04:05"),
 	}
-	code, rpcMsg := rpc.RpcLogicObj.Push(req)
+	code, rpcMsg := rpcclient.GetLogicRpcClient().Push(req)
 	if code == tools.CodeFail {
 		tools.FailWithMsg(c, rpcMsg)
 		return
@@ -81,7 +82,7 @@ func PushRoom(c *gin.Context) {
 	msg := formRoom.Msg
 	roomId := formRoom.RoomId
 	checkAuthReq := &proto.CheckAuthRequest{AuthToken: authToken}
-	authCode, fromUserId, fromUserName := rpc.RpcLogicObj.CheckAuth(checkAuthReq)
+	authCode, fromUserId, fromUserName := rpcclient.GetLogicRpcClient().CheckAuth(checkAuthReq)
 	if authCode == tools.CodeFail {
 		tools.FailWithMsg(c, "rpc fail get self info")
 		return
@@ -93,7 +94,7 @@ func PushRoom(c *gin.Context) {
 		RoomId:       roomId,
 		Op:           config.OpRoomSend,
 	}
-	code, msg := rpc.RpcLogicObj.PushRoom(req)
+	code, msg := rpcclient.GetLogicRpcClient().PushRoom(req)
 	if code == tools.CodeFail {
 		tools.FailWithMsg(c, "rpc push room msg fail!")
 		return
@@ -117,7 +118,7 @@ func Count(c *gin.Context) {
 		RoomId: roomId,
 		Op:     config.OpRoomCountSend,
 	}
-	code, msg := rpc.RpcLogicObj.Count(req)
+	code, msg := rpcclient.GetLogicRpcClient().Count(req)
 	if code == tools.CodeFail {
 		tools.FailWithMsg(c, "rpc get room count fail!")
 		return
@@ -141,7 +142,7 @@ func GetRoomInfo(c *gin.Context) {
 		RoomId: roomId,
 		Op:     config.OpRoomInfoSend,
 	}
-	code, msg := rpc.RpcLogicObj.GetRoomInfo(req)
+	code, msg := rpcclient.GetLogicRpcClient().GetRoomInfo(req)
 	if code == tools.CodeFail {
 		tools.FailWithMsg(c, "rpc get room info fail!")
 		return

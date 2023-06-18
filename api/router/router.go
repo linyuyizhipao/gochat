@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"gochat/api/handler"
-	"gochat/api/rpc"
+	"gochat/pkg/rpcclient"
 	"gochat/proto"
 	"gochat/tools"
 	"net/http"
@@ -66,7 +66,7 @@ func CheckSessionId() gin.HandlerFunc {
 		req := &proto.CheckAuthRequest{
 			AuthToken: authToken,
 		}
-		code, userId, userName := rpc.RpcLogicObj.CheckAuth(req)
+		code, userId, userName := rpcclient.GetLogicRpcClient().CheckAuth(req)
 		if code == tools.CodeFail || userId <= 0 || userName == "" {
 			c.Abort()
 			tools.ResponseWithCode(c, tools.CodeSessionError, nil, nil)

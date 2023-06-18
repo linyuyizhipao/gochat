@@ -10,8 +10,8 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"github.com/sirupsen/logrus"
-	"gochat/api/rpc"
 	"gochat/config"
+	"gochat/pkg/rpcclient"
 	"gochat/pkg/stickpackage"
 	"gochat/proto"
 	"net"
@@ -190,7 +190,7 @@ func (c *Connect) readDataFromTcp(s *Server, ch *Channel) {
 					RoomId:       rawTcpMsg.RoomId,
 					Op:           config.OpRoomSend,
 				}
-				code, msg := rpc.RpcLogicObj.PushRoom(req)
+				code, msg := rpcclient.GetLogicRpcClient().PushRoom(req)
 				logrus.Infof("tcp conn push msg to room,err code is:%d,err msg is:%s", code, msg)
 			}
 		}
