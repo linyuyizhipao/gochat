@@ -1,13 +1,16 @@
-package logic
+package mq
 
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/go-redis/redis"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cast"
 	"gochat/config"
+	"gochat/db"
 	"gochat/logic/dao"
+	"gochat/pkg/redisclient"
 	"gochat/proto"
 	"gochat/tools"
 	"gorm.io/gorm"
@@ -15,11 +18,28 @@ import (
 	"time"
 )
 
+func NewRedisMq() *RedisMq {
+	rd := &RedisMq{
+		sd: syncData{
+			LastTime: time.Second * 10,
+			offset:   0,
+			count:    30,
+			db:       db.GetDb(db.DefaultDbname),
+		},
+	}
+
+	go func() {
+		rd.sd.SyncLoop(context.Background())
+	}()
+	return rd
+}
+
 type syncData struct {
 	LastTime time.Duration //只保留多久之内的聊天记录
 	offset   int64         //开始的offset
 	count    int64         //每页数量
 	db       *gorm.DB
+	rds      *redis.Client
 }
 
 // 一个小时执行一次
@@ -47,7 +67,7 @@ func (s *syncData) sync(ctx context.Context) {
 			Count:  count,
 		}
 		offset += count
-		zs := RedisClient.ZRangeByScoreWithScores(config.RedisPersistenceKeys, opt).Val()
+		zs := s.rds.ZRangeByScoreWithScores(config.RedisPersistenceKeys, opt).Val()
 		persistenceKeys := []string{}
 
 		if len(zs) <= 0 {
@@ -65,13 +85,13 @@ func (s *syncData) sync(ctx context.Context) {
 				s.syncPersistencePushKey(ctx, persistenceKey)
 			}
 
-			if n := RedisClient.ZCard(persistenceKey).Val(); n <= 0 {
-				RedisClient.ZRem(config.RedisPersistenceKeys, persistenceKey)
+			if n := s.rds.ZCard(persistenceKey).Val(); n <= 0 {
+				s.rds.ZRem(config.RedisPersistenceKeys, persistenceKey)
 				continue
 			}
 
 			ss := time.Now().Add(s.LastTime).Unix() //每同步一次，下次再同步就是3天后了，这里有个问题，如果三天内触发了最大值，也需要立即flush db才行，这个后面再实现吧
-			RedisClient.ZAdd(config.RedisPersistenceKeys, redis.Z{
+			s.rds.ZAdd(config.RedisPersistenceKeys, redis.Z{
 				Score:  float64(ss),
 				Member: persistenceKey,
 			})
@@ -93,7 +113,7 @@ func (s *syncData) syncPersistencePushRoomKey(ctx context.Context, persistenceKe
 			Offset: offset,
 			Count:  count,
 		}
-		zs := RedisClient.ZRangeByScoreWithScores(persistenceKey, persistenceOpt).Val()
+		zs := s.rds.ZRangeByScoreWithScores(persistenceKey, persistenceOpt).Val()
 		roomMessages, members := s.getRoomMessages(zs)
 		if len(roomMessages) <= 0 {
 			logrus.Infof("PersistencePush0 room  roomMessages=%+v zs:%+v ", roomMessages, zs)
@@ -107,7 +127,7 @@ func (s *syncData) syncPersistencePushRoomKey(ctx context.Context, persistenceKe
 			if err := tx.CreateInBatches(roomMessages, len(roomMessages)).Error; err != nil {
 				return err
 			}
-			return RedisClient.ZRem(persistenceKey, members...).Err()
+			return s.rds.ZRem(persistenceKey, members...).Err()
 		})
 		if err != nil {
 			logrus.Errorf("PersistencePush room  CreateInBatches err:%v ", err)
@@ -129,7 +149,7 @@ func (s *syncData) syncPersistencePushKey(ctx context.Context, persistenceKey st
 			Count:  count,
 		}
 		offset += count
-		zs := RedisClient.ZRangeByScoreWithScores(persistenceKey, persistenceOpt).Val()
+		zs := s.rds.ZRangeByScoreWithScores(persistenceKey, persistenceOpt).Val()
 		minUid, maxUid := s.getMinUidMaxUid(zs)
 		if minUid <= 0 || maxUid <= 0 {
 			//正序拿的，如果minUid没拿到，说明没有需要持久化的
@@ -164,7 +184,7 @@ func (s *syncData) syncPersistencePushKey(ctx context.Context, persistenceKey st
 				return err
 			}
 
-			return RedisClient.ZRem(persistenceKey, members...).Err()
+			return s.rds.ZRem(persistenceKey, members...).Err()
 		})
 		if err != nil {
 			logrus.Infof("syncPersistencePushKey RedisClient.ZRem err:%v ", err)
@@ -248,5 +268,89 @@ func (s *syncData) getPushMessages(sessionId int64, zs []redis.Z) (userMessages 
 		userMessages = append(userMessages, userMessage)
 	}
 
+	return
+}
+
+type RedisMq struct {
+	sd syncData
+}
+
+func (k *RedisMq) SendMsg(ctx context.Context, redisMsgByte []byte) (err error) {
+	redisChannel := config.QueueName
+	if err := redisclient.Rds.LPush(redisChannel, redisMsgByte).Err(); err != nil {
+		logrus.Errorf("logic,lpush err:%s", err.Error())
+		return err
+	}
+	return
+}
+
+func (k *RedisMq) ConsumeMsg(ctx context.Context) (msg []byte, err error) {
+	var result []string
+	result, err = redisclient.Rds.BRPop(time.Second*10, config.QueueName).Result()
+	if err != nil && err != redis.Nil {
+		logrus.Errorf("task queue block timeout,no msg err:%s", err.Error())
+	}
+	logrus.Infof("InitQueueClient len(result)=%d,result=%v", len(result), result)
+	if len(result) >= 2 {
+		msg = []byte(result[1])
+	}
+	return
+}
+
+func (k *RedisMq) DataPersistencePush(ctx context.Context, userId int, msgId int64, body []byte) (err error) {
+	seqId := msgId
+	sendMsg := &proto.Send{}
+	persistenceData := &proto.PersistenceData{}
+	if err := json.Unmarshal(body, sendMsg); err != nil {
+		logrus.Infof("PersistencePush json.Unmarshal err:%v ", err)
+	}
+	persistenceData.Msg = sendMsg.Msg
+	persistenceData.RoomId = sendMsg.RoomId
+	persistenceData.FromUserId = sendMsg.FromUserId
+	persistenceData.ToUserId = sendMsg.ToUserId
+	persistenceData.Op = sendMsg.Op
+	persistenceData.MsgId = seqId
+	perDataBody, err := json.Marshal(persistenceData)
+	if err != nil {
+		logrus.Errorf("PersistencePush json.Marshal err:%v ", err)
+		return
+	}
+	persistenceKey := fmt.Sprintf(config.RedisPushPersistence, tools.GenerateUserMsgKey(userId, sendMsg.ToUserId))
+	d := redis.Z{
+		Score:  float64(persistenceData.MsgId),
+		Member: string(perDataBody),
+	}
+	pipe := redisclient.Rds.Pipeline()
+	pipe.ZAdd(persistenceKey, d)
+	pipe.ZAdd(config.RedisPersistenceKeys, redis.Z{
+		Score:  float64(time.Now().Unix()),
+		Member: persistenceKey,
+	})
+	_, err = pipe.Exec()
+	if err != nil {
+		logrus.Infof("PersistencePush Exec err:%v ", err)
+		return
+	}
+	logrus.Infof("PersistencePush pushRoomMsgRequest,userId=%d,seqId=%d,body=%+v ", userId, seqId, body)
+	return
+}
+
+func (k *RedisMq) DataPersistencePushRoom(ctx context.Context, roomId int, msgId int64, body []byte) (err error) {
+	d := redis.Z{
+		Score:  float64(msgId),
+		Member: string(body),
+	}
+	persistenceKey := fmt.Sprintf(config.RedisPushRoomPersistence, roomId)
+	pipe := redisclient.Rds.Pipeline()
+	pipe.ZAdd(persistenceKey, d)
+	pipe.ZAdd(config.RedisPersistenceKeys, redis.Z{
+		Score:  float64(time.Now().Unix()),
+		Member: persistenceKey,
+	})
+	_, err = pipe.Exec()
+	if err != nil {
+		logrus.Infof("PersistencePushRoom Exec err:%v ", err)
+		return
+	}
 	return
 }

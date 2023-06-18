@@ -17,7 +17,7 @@ func Test_TestQueue(t *testing.T) {
 		Password: config.Conf.Common.CommonRedis.RedisPassword,
 		Db:       config.Conf.Common.CommonRedis.Db,
 	}
-	RedisClient = tools.GetRedisInstance(redisOpt)
+	RedisClient := tools.GetRedisInstance(redisOpt)
 	result, err := RedisClient.BRPop(time.Second*10, config.QueueName).Result()
 	if err != nil {
 		t.Fail()

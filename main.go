@@ -12,6 +12,7 @@ import (
 	"gochat/config"
 	"gochat/connect"
 	"gochat/logic"
+	"gochat/pkg/redisclient"
 	"gochat/site"
 	"gochat/task"
 	"os"
@@ -27,6 +28,8 @@ func main() {
 	if module == "dev" {
 		levelLog = logrus.DebugLevel
 	}
+	redisclient.InitPublishRedisClient()
+
 	logrus.SetLevel(levelLog)
 	switch module {
 	case "logic":

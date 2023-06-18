@@ -6,39 +6,23 @@
 package task
 
 import (
-	"github.com/go-redis/redis"
+	"context"
 	"github.com/sirupsen/logrus"
-	"gochat/config"
-	"gochat/tools"
-	"time"
+	"gochat/mq"
 )
 
-var RedisClient *redis.Client
-
-func (task *Task) InitQueueRedisClient() (err error) {
-	redisOpt := tools.RedisOption{
-		Address:  config.Conf.Common.CommonRedis.RedisAddress,
-		Password: config.Conf.Common.CommonRedis.RedisPassword,
-		Db:       config.Conf.Common.CommonRedis.Db,
-	}
-	RedisClient = tools.GetRedisInstance(redisOpt)
-	if pong, err := RedisClient.Ping().Result(); err != nil {
-		logrus.Infof("RedisClient Ping Result pong: %s,  err: %s", pong, err)
-	}
+func (task *Task) InitQueueClient() (err error) {
 	go func() {
 		logrus.Info("InitQueueRedisClient2 len(result222)")
 
 		for {
-			var result []string
 			//10s timeout
-			result, err = RedisClient.BRPop(time.Second*10, config.QueueName).Result()
-			if err != nil && err != redis.Nil {
+			msg, err := mq.GetMsgDecomposer().ConsumeMsg(context.Background())
+			if err != nil {
 				logrus.Errorf("task queue block timeout,no msg err:%s", err.Error())
+				return
 			}
-			logrus.Infof("InitQueueRedisClient len(result)=%d,result=%v", len(result), result)
-			if len(result) >= 2 {
-				task.Push(result[1])
-			}
+			task.Push(string(msg))
 		}
 	}()
 	return
