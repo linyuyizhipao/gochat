@@ -117,5 +117,5 @@ type PersistenceData struct {
 	RoomId     int    `json:"roomId"`
 	Op         int    `json:"op"`
 	CreateTime string `json:"createTime"`
-	MsgId      int64  `json:"msgId"`
+	SeqId      int64  `json:"seqId"`
 }

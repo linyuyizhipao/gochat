@@ -15,23 +15,33 @@ import (
 	"gochat/tools"
 	"gorm.io/gorm"
 	"strings"
+	"sync"
 	"time"
 )
 
-func NewRedisMq() *RedisMq {
-	rd := &RedisMq{
-		sd: syncData{
-			LastTime: time.Second * 10,
-			offset:   0,
-			count:    30,
-			db:       db.GetDb(db.DefaultDbname),
-		},
-	}
+var (
+	once    sync.Once
+	redisMq *RedisMq
+)
 
-	go func() {
-		rd.sd.SyncLoop(context.Background())
-	}()
-	return rd
+func NewRedisMq() *RedisMq {
+	once.Do(func() {
+		redisMq = &RedisMq{
+			sd: syncData{
+				LastTime: time.Second * 10,
+				offset:   0,
+				count:    30,
+				db:       db.GetDb(db.DefaultDbname),
+				rds:      redisclient.Rds,
+			},
+		}
+		go func() {
+			redisMq.sd.SyncLoop(context.Background())
+		}()
+
+	})
+
+	return redisMq
 }
 
 type syncData struct {
@@ -218,6 +228,7 @@ func (s *syncData) getMinUidMaxUid(zs []redis.Z) (minUid, maxUid int64) {
 
 func (s *syncData) getRoomMessages(zs []redis.Z) (roomMessages []*dao.RoomMessage, members []interface{}) {
 	for _, z := range zs {
+		seqId := cast.ToInt64(z.Score)
 		memberStr := cast.ToString(z.Member)
 
 		sendMsg := &proto.PersistenceData{}
@@ -228,10 +239,11 @@ func (s *syncData) getRoomMessages(zs []redis.Z) (roomMessages []*dao.RoomMessag
 		if tt > time.Now().Add(-s.LastTime).Unix() {
 			continue
 		}
+		sendMsg.SeqId = seqId
 
 		roomMessage := &dao.RoomMessage{
 			Rid:        cast.ToInt64(sendMsg.RoomId),
-			SeqID:      sendMsg.MsgId,
+			SeqID:      sendMsg.SeqId,
 			UID:        cast.ToInt64(sendMsg.FromUserId),
 			Content:    sendMsg.Msg,
 			CreateTime: time.Now(),
@@ -258,7 +270,7 @@ func (s *syncData) getPushMessages(sessionId int64, zs []redis.Z) (userMessages 
 		members = append(members, z.Member)
 		userMessage := &dao.UserMessage{
 			SessionID:  sessionId,
-			SeqID:      sendMsg.MsgId,
+			SeqID:      sendMsg.SeqId,
 			UID:        cast.ToInt64(sendMsg.FromUserId),
 			ToUID:      cast.ToInt64(sendMsg.ToUserId),
 			Content:    sendMsg.Msg,
@@ -285,9 +297,8 @@ func (k *RedisMq) SendMsg(ctx context.Context, redisMsgByte []byte) (err error) 
 }
 
 func (k *RedisMq) ConsumeMsg(ctx context.Context) (msg []byte, err error) {
-	var result []string
-	result, err = redisclient.Rds.BRPop(time.Second*10, config.QueueName).Result()
-	if err != nil && err != redis.Nil {
+	result, rErr := redisclient.Rds.BRPop(time.Second*10, config.QueueName).Result()
+	if rErr != nil && rErr != redis.Nil {
 		logrus.Errorf("task queue block timeout,no msg err:%s", err.Error())
 	}
 	logrus.Infof("InitQueueClient len(result)=%d,result=%v", len(result), result)
@@ -309,7 +320,7 @@ func (k *RedisMq) DataPersistencePush(ctx context.Context, userId int, msgId int
 	persistenceData.FromUserId = sendMsg.FromUserId
 	persistenceData.ToUserId = sendMsg.ToUserId
 	persistenceData.Op = sendMsg.Op
-	persistenceData.MsgId = seqId
+	persistenceData.SeqId = seqId
 	perDataBody, err := json.Marshal(persistenceData)
 	if err != nil {
 		logrus.Errorf("PersistencePush json.Marshal err:%v ", err)
@@ -317,7 +328,7 @@ func (k *RedisMq) DataPersistencePush(ctx context.Context, userId int, msgId int
 	}
 	persistenceKey := fmt.Sprintf(config.RedisPushPersistence, tools.GenerateUserMsgKey(userId, sendMsg.ToUserId))
 	d := redis.Z{
-		Score:  float64(persistenceData.MsgId),
+		Score:  float64(persistenceData.SeqId),
 		Member: string(perDataBody),
 	}
 	pipe := redisclient.Rds.Pipeline()

@@ -216,7 +216,10 @@ func (task *Task) broadcastRoomToConnect(roomId int, msg []byte) {
 	rpcList := RClient.GetAllConnectTypeRpcClient()
 	for _, rpc := range rpcList {
 		logrus.Infof("broadcastRoomToConnect rpc  %v", rpc)
-		rpc.Call(context.Background(), "PushRoomMsg", pushRoomMsgReq, reply)
+		rErr := rpc.Call(context.Background(), "PushRoomMsg", pushRoomMsgReq, reply)
+		if rErr != nil {
+			logrus.Errorf("rErr %v", rErr)
+		}
 		logrus.Infof("reply %s", reply.Msg)
 	}
 

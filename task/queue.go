@@ -22,7 +22,9 @@ func (task *Task) InitQueueClient() (err error) {
 				logrus.Errorf("task queue block timeout,no msg err:%s", err.Error())
 				return
 			}
-			task.Push(string(msg))
+			if len(msg) > 0 {
+				task.Push(string(msg))
+			}
 		}
 	}()
 	return
