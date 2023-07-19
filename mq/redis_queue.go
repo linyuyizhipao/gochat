@@ -299,7 +299,9 @@ func (k *RedisMq) SendMsg(ctx context.Context, redisMsgByte []byte) (err error) 
 func (k *RedisMq) ConsumeMsg(ctx context.Context) (msg []byte, err error) {
 	result, rErr := redisclient.Rds.BRPop(time.Second*10, config.QueueName).Result()
 	if rErr != nil && rErr != redis.Nil {
+		err = rErr
 		logrus.Errorf("task queue block timeout,no msg err:%s", err.Error())
+		return
 	}
 	logrus.Infof("InitQueueClient len(result)=%d,result=%v", len(result), result)
 	if len(result) >= 2 {

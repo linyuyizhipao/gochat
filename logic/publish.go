@@ -89,11 +89,11 @@ func (logic *Logic) RedisPublishChannel(serverId string, toUserId int, msg []byt
 
 func (logic *Logic) RedisPublishRoomInfo(roomId int, count int, RoomUserInfo map[string]string, msg []byte) (err error) {
 	var redisMsg = &proto.RedisMsg{
-		Op:           config.OpRoomSend,
-		RoomId:       roomId,
-		Count:        count,
-		Msg:          msg,
-		RoomUserInfo: RoomUserInfo,
+		Op:     config.OpRoomSend,
+		RoomId: roomId,
+		Count:  count,
+		Msg:    msg,
+		//RoomUserInfo: RoomUserInfo,
 	}
 	redisMsgByte, err := json.Marshal(redisMsg)
 	if err != nil {
