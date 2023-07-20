@@ -16,11 +16,12 @@ import (
 	"gorm.io/gorm"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
 var (
-	once    sync.Once
+	once    = &sync.Once{}
 	redisMq *RedisMq
 )
 
@@ -30,13 +31,19 @@ func NewRedisMq() *RedisMq {
 			sd: syncData{
 				LastTime: time.Second * 10,
 				offset:   0,
-				count:    30,
+				count:    100,
 				db:       db.GetDb(db.DefaultDbname),
 				rds:      redisclient.Rds,
 			},
+			enqueue: make(chan []byte, 1000),
 		}
+		//redisMq.sd.rds.Do("FLUSHDB")
 		go func() {
 			redisMq.sd.SyncLoop(context.Background())
+		}()
+
+		go func() {
+			redisMq.batchSendMsg()
 		}()
 
 	})
@@ -116,7 +123,7 @@ func (s *syncData) syncPersistencePushRoomKey(ctx context.Context, persistenceKe
 	offset := s.offset
 	count := s.count
 	for {
-
+		startTime := time.Now().Format("2006-01-02 15:04:05")
 		persistenceOpt := redis.ZRangeBy{
 			Min:    "0",
 			Max:    "+inf",
@@ -129,8 +136,8 @@ func (s *syncData) syncPersistencePushRoomKey(ctx context.Context, persistenceKe
 			logrus.Infof("PersistencePush0 room  roomMessages=%+v zs:%+v ", roomMessages, zs)
 			return
 		}
+		startTime1 := time.Now().Format("2006-01-02 15:04:05")
 		offset += count
-		logrus.Infof("PersistencePush room  roomMessages=%+v zs:%+v ", roomMessages, zs)
 
 		//批量落库
 		err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -139,10 +146,13 @@ func (s *syncData) syncPersistencePushRoomKey(ctx context.Context, persistenceKe
 			}
 			return s.rds.ZRem(persistenceKey, members...).Err()
 		})
+
+		startTime2 := time.Now().Format("2006-01-02 15:04:05")
 		if err != nil {
 			logrus.Errorf("PersistencePush room  CreateInBatches err:%v ", err)
 			return
 		}
+		logrus.Infof("PersistencePushInfo  roomMessages=%+v zs:%v startTime:%s startTime1=%s startTime2=%s", roomMessages, len(zs), startTime, startTime1, startTime2)
 	}
 
 }
@@ -284,16 +294,47 @@ func (s *syncData) getPushMessages(sessionId int64, zs []redis.Z) (userMessages 
 }
 
 type RedisMq struct {
-	sd syncData
+	sd      syncData
+	enqueue chan []byte
 }
 
 func (k *RedisMq) SendMsg(ctx context.Context, redisMsgByte []byte) (err error) {
-	redisChannel := config.QueueName
-	if err := redisclient.Rds.LPush(redisChannel, redisMsgByte).Err(); err != nil {
-		logrus.Errorf("logic,lpush err:%s", err.Error())
-		return err
-	}
+	k.enqueue <- redisMsgByte
 	return
+}
+
+func (k *RedisMq) batchSendMsg() {
+	redisChannel := config.QueueName
+	msgBytes := []interface{}{}
+	isAppend := false
+	num := int32(0)
+	for {
+		select {
+		case redisMsgByte := <-k.enqueue:
+			msgBytes = append(msgBytes, redisMsgByte)
+			isAppend = len(msgBytes) <= 20
+			atomic.AddInt32(&num, 1)
+		default:
+			isAppend = false
+		}
+
+		if isAppend {
+			continue
+		}
+
+		if len(msgBytes) <= 0 {
+			logrus.Info("RedisMq.batchSendMsg", " num= ", atomic.LoadInt32(&num), "time", time.Now().Unix(), " num=", atomic.LoadInt32(&num))
+			time.Sleep(time.Second * 3)
+			continue
+		}
+
+		if err := redisclient.Rds.LPush(redisChannel, msgBytes...).Err(); err != nil {
+			logrus.Errorf("logic,lpush chan err:%s", err.Error())
+			continue
+		}
+		msgBytes = []interface{}{}
+	}
+
 }
 
 func (k *RedisMq) ConsumeMsg(ctx context.Context) (msg []byte, err error) {

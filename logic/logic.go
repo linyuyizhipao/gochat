@@ -17,13 +17,14 @@ type Logic struct {
 }
 
 func New() *Logic {
-	return new(Logic)
+	return &Logic{
+		ServerId: fmt.Sprintf("logic-%s", uuid.New().String()),
+	}
 }
 
 func (logic *Logic) Run() {
 	//read config
 	runtime.GOMAXPROCS(runtime.NumCPU())
-	logic.ServerId = fmt.Sprintf("logic-%s", uuid.New().String())
 
 	//init rpc server
 	if err := logic.InitRpcServer(); err != nil {

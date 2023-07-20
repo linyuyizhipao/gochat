@@ -93,7 +93,6 @@ func (logic *Logic) RedisPublishRoomInfo(roomId int, count int, RoomUserInfo map
 		RoomId: roomId,
 		Count:  count,
 		Msg:    msg,
-		//RoomUserInfo: RoomUserInfo,
 	}
 	redisMsgByte, err := json.Marshal(redisMsg)
 	if err != nil {
