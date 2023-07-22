@@ -14,7 +14,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/smallnest/rpcx/client"
 	"gochat/config"
-	"gochat/pkg/rpcclient"
+	"gochat/mq"
 	"gochat/proto"
 	"gochat/tools"
 	"strings"
@@ -185,9 +185,10 @@ func (task *Task) pushSingleToConnect(serverId string, userId int, msg []byte) (
 			Body:      msg,
 		},
 	}
+	ctx := context.Background()
 	connectRpc, err := RClient.GetRpcClientByServerId(serverId)
 	if err == nil {
-		err = connectRpc.Call(context.Background(), "PushSingleMsg", pushMsgReq, reply)
+		err = connectRpc.Call(ctx, "PushSingleMsg", pushMsgReq, reply)
 		if err != nil {
 			logrus.Errorf("pushSingleToConnect Call err %v", err)
 		}
@@ -196,7 +197,7 @@ func (task *Task) pushSingleToConnect(serverId string, userId int, msg []byte) (
 	}
 
 	//持久化 data persistence
-	rpcclient.GetLogicRpcClient().PersistencePush(context.Background(), pushMsgReq)
+	mq.GetMsgDecomposer().DataPersistencePush(ctx, userId, pushMsgReq.Msg.SeqId, pushMsgReq.Msg.Body)
 
 	logrus.Infof("reply %s pushMsgReq=%v", reply.Msg, pushMsgReq)
 	return
@@ -214,9 +215,10 @@ func (task *Task) broadcastRoomToConnect(roomId int, msg []byte) {
 	}
 	reply := &proto.SuccessReply{}
 	rpcList := RClient.GetAllConnectTypeRpcClient()
+	ctx := context.Background()
 	for _, rpc := range rpcList {
 		logrus.Infof("broadcastRoomToConnect rpc  %v", rpc)
-		rErr := rpc.Call(context.Background(), "PushRoomMsg", pushRoomMsgReq, reply)
+		rErr := rpc.Call(ctx, "PushRoomMsg", pushRoomMsgReq, reply)
 		if rErr != nil {
 			logrus.Errorf("rErr %v", rErr)
 		}
@@ -224,7 +226,7 @@ func (task *Task) broadcastRoomToConnect(roomId int, msg []byte) {
 	}
 
 	//持久化 data persistence
-	rpcclient.GetLogicRpcClient().PersistencePushRoom(context.Background(), pushRoomMsgReq)
+	mq.GetMsgDecomposer().DataPersistencePushRoom(ctx, pushRoomMsgReq.RoomId, pushRoomMsgReq.Msg.SeqId, pushRoomMsgReq.Msg.Body)
 }
 
 func (task *Task) broadcastRoomCountToConnect(roomId, count int) {

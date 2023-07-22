@@ -50,22 +50,6 @@ func GetLogicRpcClient() (logicClient *LogicRpc) {
 	return logicRpcClient
 }
 
-func (r *LogicRpc) PersistencePush(ctx context.Context, body *proto.PushMsgRequest) (code int, msg string) {
-	reply := &proto.SuccessReply{}
-	r.client.Call(context.Background(), "PersistencePush", body, reply)
-	code = reply.Code
-	msg = reply.Msg
-	return
-}
-
-func (r *LogicRpc) PersistencePushRoom(ctx context.Context, body *proto.PushRoomMsgRequest) (code int, msg string) {
-	reply := &proto.SuccessReply{}
-	r.client.Call(context.Background(), "PersistencePushRoom", body, reply)
-	code = reply.Code
-	msg = reply.Msg
-	return
-}
-
 //~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (r *LogicRpc) Login(req *proto.LoginRequest) (code int, authToken string, msg string) {

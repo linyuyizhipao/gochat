@@ -12,12 +12,17 @@ import (
 )
 
 func (task *Task) InitQueueClient() (err error) {
+	md := mq.GetMsgDecomposer()
+	go func() {
+		md.InitPersistence()
+	}()
+
 	go func() {
 		logrus.Info("InitQueueRedisClient2 len(result222)")
 
 		for {
 			//10s timeout
-			msg, err := mq.GetMsgDecomposer().ConsumeMsg(context.Background())
+			msg, err := md.ConsumeMsg(context.Background())
 			if err != nil {
 				logrus.Errorf("task queue block timeout,no msg err:%s", err.Error())
 				return

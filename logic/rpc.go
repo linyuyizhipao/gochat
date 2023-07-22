@@ -13,7 +13,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"gochat/config"
 	"gochat/logic/dao"
-	"gochat/mq"
 	"gochat/pkg/redisclient"
 	"gochat/proto"
 	"gochat/tools"
@@ -91,17 +90,18 @@ func (rpc *RpcLogic) Login(ctx context.Context, args *proto.LoginRequest, reply 
 			return errors.New("logout user fail!token is:" + token)
 		}
 	}
-	redisclient.Rds.Do("MULTI")
-	redisclient.Rds.HMSet(sessionId, userData)
-	redisclient.Rds.Expire(sessionId, 86400*time.Second)
-	redisclient.Rds.Set(loginSessionId, randToken, 86400*time.Second)
-	err = redisclient.Rds.Do("EXEC").Err()
+	pipe := redisclient.Rds.Pipeline()
+	pipe.HMSet(sessionId, userData)
+	pipe.Expire(sessionId, 86400*time.Second)
+	pipe.Set(loginSessionId, randToken, 86400*time.Second)
 	//err = redisclient.Rds.Set(authToken, data.Id, 86400*time.Second).Err()
+	_, err = pipe.Exec()
 	if err != nil {
 		logrus.Infof("register set redis token fail!")
 		return err
 	}
 	reply.Code = config.SuccessReplyCode
+	logrus.Info("authToken3", randToken)
 	reply.AuthToken = randToken
 	return
 }
@@ -128,7 +128,7 @@ func (rpc *RpcLogic) CheckAuth(ctx context.Context, args *proto.CheckAuthRequest
 		return err
 	}
 	if len(userDataMap) == 0 {
-		logrus.Infof("no this user session,authToken is:%s", authToken)
+		logrus.Infof("no this user session,authToken is:%s;userDataMap=%+v", authToken, userDataMap)
 		return
 	}
 	intUserId, _ := strconv.Atoi(userDataMap["userId"])
@@ -364,18 +364,4 @@ func (rpc *RpcLogic) DisConnect(ctx context.Context, args *proto.DisConnectReque
 		return
 	}
 	return
-}
-
-func (rpc *RpcLogic) PersistencePush(ctx context.Context, pushMsgRequest *proto.PushMsgRequest, reply *proto.SuccessReply) (err error) {
-	userId := pushMsgRequest.UserId
-	seqId := pushMsgRequest.Msg.SeqId
-	body := pushMsgRequest.Msg.Body
-	return mq.GetMsgDecomposer().DataPersistencePush(ctx, userId, seqId, body)
-}
-
-func (rpc *RpcLogic) PersistencePushRoom(ctx context.Context, pushRoomMsgRequest *proto.PushRoomMsgRequest, reply *proto.SuccessReply) (err error) {
-	roomId := pushRoomMsgRequest.RoomId
-	seqId := pushRoomMsgRequest.Msg.SeqId
-	body := pushRoomMsgRequest.Msg.Body
-	return mq.GetMsgDecomposer().DataPersistencePushRoom(ctx, roomId, seqId, body)
 }
