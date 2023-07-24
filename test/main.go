@@ -16,7 +16,7 @@ import "github.com/go-resty/resty/v2"
 func main() {
 	wg := &sync.WaitGroup{}
 	roomId := 1
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 10; i++ {
 		wg.Add(1)
 		num := i + 1
 		name := fmt.Sprintf("test-%d", num)
@@ -38,7 +38,7 @@ func main() {
 	}
 	wg.Wait()
 
-	time.Sleep(time.Second * 100)
+	time.Sleep(time.Second * 10)
 	lock.Lock()
 
 	for _, conn := range connMap {
@@ -171,7 +171,6 @@ func websocket1(name, authToken string, roomId int) {
 		if err != nil {
 			continue
 		}
-		time.Sleep(time.Second)
 	}
 	return
 }
