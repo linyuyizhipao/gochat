@@ -40,10 +40,9 @@ func (rq *RdsQueue) Enqueue(ctx context.Context, msg []byte) (err error) {
 }
 
 func (rq *RdsQueue) Dequeue(ctx context.Context) (msg []byte, err error) {
-	result, rErr := rq.rds.BRPop(0, config.QueueName).Result()
+	result, rErr := rq.rds.BRPop(10, config.QueueName).Result()
 	if rErr != nil && rErr != redis.Nil {
-		err = rErr
-		logrus.Errorf("task queue block timeout,no msg err:%s", err.Error())
+		logrus.Warningf("task queue block timeout,no msg err:%s", rErr.Error())
 		return
 	}
 	logrus.WithContext(ctx).Infof("Dequeue len(result)=%d,result=%v", len(result), result)
@@ -62,7 +61,7 @@ type (
 )
 
 var rdsPersistence = &RdsPersistence{
-	flushQueue: make(chan *proto.PersistenceData, 5000),
+	flushQueue: make(chan *proto.PersistenceData, 50000),
 	db:         db.GetDb(db.DefaultDbname),
 }
 

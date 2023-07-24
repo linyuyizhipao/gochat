@@ -9,6 +9,7 @@ import (
 	"context"
 	"github.com/sirupsen/logrus"
 	"gochat/mq"
+	"time"
 )
 
 func (task *Task) InitQueueClient() (err error) {
@@ -23,13 +24,14 @@ func (task *Task) InitQueueClient() (err error) {
 		logrus.Info("InitQueueClient len(result)")
 
 		for {
-			msg, err := md.ConsumeMsg(context.Background())
-			if err != nil {
-				logrus.Errorf("task queue block timeout,no msg err:%s", err.Error())
-				return
+			msg, merr := md.ConsumeMsg(context.Background())
+			if merr != nil {
+				logrus.Errorf("task queue block timeout,no msg err:%s", merr.Error())
+				time.Sleep(time.Second * 10)
+				continue
 			}
 			if len(msg) <= 0 {
-				logrus.Errorf("task queue block no msg err:%s", err.Error())
+				logrus.Errorf("task queue block no msg")
 				continue
 			}
 			task.Push(string(msg))
