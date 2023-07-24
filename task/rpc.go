@@ -197,8 +197,7 @@ func (task *Task) pushSingleToConnect(serverId string, userId int, msg []byte) (
 	}
 
 	//持久化 data persistence
-	mq.GetMsgDecomposer().DataPersistencePush(ctx, userId, pushMsgReq.Msg.SeqId, pushMsgReq.Msg.Body)
-
+	_, _ = mq.GetPersistence().Write(ctx, pushMsgReq.Msg.SeqId, pushMsgReq.Msg.Body)
 	logrus.Infof("reply %s pushMsgReq=%v", reply.Msg, pushMsgReq)
 	return
 }
@@ -226,7 +225,7 @@ func (task *Task) broadcastRoomToConnect(roomId int, msg []byte) {
 	}
 
 	//持久化 data persistence
-	mq.GetMsgDecomposer().DataPersistencePushRoom(ctx, pushRoomMsgReq.RoomId, pushRoomMsgReq.Msg.SeqId, pushRoomMsgReq.Msg.Body)
+	_, _ = mq.GetPersistence().Write(ctx, pushRoomMsgReq.Msg.SeqId, pushRoomMsgReq.Msg.Body)
 }
 
 func (task *Task) broadcastRoomCountToConnect(roomId, count int) {

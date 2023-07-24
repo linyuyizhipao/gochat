@@ -79,7 +79,7 @@ func (logic *Logic) RedisPublishChannel(serverId string, toUserId int, msg []byt
 		return err
 	}
 
-	err = mq.GetMsgDecomposer().SendMsg(context.Background(), redisMsgByte)
+	err = mq.NewMq().SendMsg(context.Background(), redisMsgByte)
 	if err != nil {
 		logrus.Errorf("logic,lpush err:%s", err.Error())
 		return err
@@ -99,7 +99,7 @@ func (logic *Logic) RedisPublishRoomInfo(roomId int, count int, RoomUserInfo map
 		logrus.Errorf("logic,RedisPublishRoomInfo redisMsg error : %s", err.Error())
 		return
 	}
-	err = mq.GetMsgDecomposer().SendMsg(context.Background(), redisMsgByte)
+	err = mq.NewMq().SendMsg(context.Background(), redisMsgByte)
 	if err != nil {
 		logrus.Errorf("logic,lpush err:%s", err.Error())
 		return err
@@ -118,7 +118,7 @@ func (logic *Logic) RedisPushRoomCount(roomId int, count int) (err error) {
 		logrus.Errorf("logic,RedisPushRoomCount redisMsg error : %s", err.Error())
 		return
 	}
-	err = mq.GetMsgDecomposer().SendMsg(context.Background(), redisMsgByte)
+	err = mq.NewMq().SendMsg(context.Background(), redisMsgByte)
 	if err != nil {
 		logrus.Errorf("logic,lpush err:%s", err.Error())
 		return err
@@ -138,7 +138,7 @@ func (logic *Logic) RedisPushRoomInfo(roomId int, count int, roomUserInfo map[st
 		logrus.Errorf("logic,RedisPushRoomInfo redisMsg error : %s", err.Error())
 		return
 	}
-	err = mq.GetMsgDecomposer().SendMsg(context.Background(), redisMsgByte)
+	err = mq.NewMq().SendMsg(context.Background(), redisMsgByte)
 	if err != nil {
 		logrus.Errorf("logic,lpush err:%s", err.Error())
 		return err

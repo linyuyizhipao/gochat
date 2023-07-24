@@ -546,6 +546,8 @@ github.com/sirupsen/logrus v1.4.2/go.mod h1:tLMulIdttU9McNUspp0xgXVQah82FyeX6Mwd
 github.com/sirupsen/logrus v1.6.0/go.mod h1:7uNnSEd1DgxDLC74fIahvMZmmYsHGZGEOFrfsX/uA88=
 github.com/sirupsen/logrus v1.8.1 h1:dJKuHgqk1NNQlqoA6BTlM1Wf9DOH3NBjQyu0h9+AZZE=
 github.com/sirupsen/logrus v1.8.1/go.mod h1:yWOB1SBYBC5VeMP7gHvWumXLIWorT60ONWic61uBYv0=
+github.com/smallnest/chanx v1.1.0 h1:2f/anv7jUuFqeOvCRy4ApmVixWcYUz1ya0vpVx6P7vQ=
+github.com/smallnest/chanx v1.1.0/go.mod h1:zXoLoNTSzdRiD+XNNsfAj6/jY7ZfBnviL96tVr+tQ3E=
 github.com/smallnest/quick v0.0.0-20220103065406-780def6371e6 h1:J8xk0QMMrqfDLqU0m07pYRRiOIlE7I3dNWAp/pAHqfo=
 github.com/smallnest/quick v0.0.0-20220103065406-780def6371e6/go.mod h1:h+J5yoLzf3XMKtM9l4vOaUtS4e+si6T3sKDtheJ15wc=
 github.com/smallnest/rpcx v1.7.4 h1:u6ADk/Ep8BqtAoJZO7LbniWsP+nqeAtcbaPm2D4eOXg=

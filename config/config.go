@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/viper"
 	"os"
 	"sync"
+	"time"
 )
 
 var once sync.Once
@@ -25,9 +26,11 @@ const (
 	RedisPrefix                = "gochat_"
 	RedisRoomPrefix            = "gochat_room_"
 	RedisRoomOnlinePrefix      = "gochat_room_online_count_"
-	RedisPushPersistence       = "gochat_push_persistence_%s"
-	RedisPushRoomPersistence   = "gochat_push_room_persistence_%d"
+	RedisPushPersistence       = "gochat_push_persistence_%s_%s"
+	RedisPushRoomPersistence   = "gochat_push_room_persistence_%d_%s"
 	RedisPersistenceKeys       = "gochat_persistence_keys" //用户定期落db的key
+	DayFmt                     = "2006-01-02"
+	DayExpired                 = time.Hour * 24 * 7
 )
 
 // proto

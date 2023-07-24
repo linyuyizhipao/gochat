@@ -30,8 +30,3 @@ stop:
 	pkill -f target/gochat
 
 
-.PHONY:task
-task:
-	nohup target/gochat -module task -conf="./target/config/$(Mode)" 2>&1 > target/log/task.log &
-
-

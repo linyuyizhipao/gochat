@@ -12,24 +12,27 @@ import (
 )
 
 func (task *Task) InitQueueClient() (err error) {
-	md := mq.GetMsgDecomposer()
+	md := mq.NewMq()
+	persistence := mq.GetPersistence()
+
 	go func() {
-		md.InitPersistence()
+		_ = persistence.FlushWhiteLoop(context.Background())
 	}()
 
 	go func() {
-		logrus.Info("InitQueueRedisClient2 len(result222)")
+		logrus.Info("InitQueueClient len(result)")
 
 		for {
-			//10s timeout
 			msg, err := md.ConsumeMsg(context.Background())
 			if err != nil {
 				logrus.Errorf("task queue block timeout,no msg err:%s", err.Error())
 				return
 			}
-			if len(msg) > 0 {
-				task.Push(string(msg))
+			if len(msg) <= 0 {
+				logrus.Errorf("task queue block no msg err:%s", err.Error())
+				continue
 			}
+			task.Push(string(msg))
 		}
 	}()
 	return
