@@ -8,6 +8,7 @@
 #deploy data
 
 data/*
+target/*
 !data/.gitkeep
 
 # gitlab ci

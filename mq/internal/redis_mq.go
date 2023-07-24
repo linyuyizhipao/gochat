@@ -61,11 +61,13 @@ type (
 	}
 )
 
+var rdsPersistence = &RdsPersistence{
+	flushQueue: make(chan *proto.PersistenceData, 5000),
+	db:         db.GetDb(db.DefaultDbname),
+}
+
 func NewRdsPersistence() *RdsPersistence {
-	return &RdsPersistence{
-		flushQueue: make(chan *proto.PersistenceData, 5000),
-		db:         db.GetDb(db.DefaultDbname),
-	}
+	return rdsPersistence
 }
 
 // 定时批量刷盘
@@ -81,8 +83,15 @@ func (rq *RdsPersistence) FlushWhiteLoop(ctx context.Context) (err error) {
 			isFlush = true
 		}
 		if !isFlush {
+			isFlush = false
 			continue
 		}
+		if len(msgs) == 0 {
+			isFlush = false
+			time.Sleep(time.Second * 10)
+			continue
+		}
+		logrus.Info("FlushWhiteLoop", "msgs", msgs)
 
 		//刷盘
 		userMessages := []*dao.UserMessage{}
@@ -127,6 +136,7 @@ func (rq *RdsPersistence) FlushWhiteLoop(ctx context.Context) (err error) {
 			}
 
 		}
+
 		if len(userMessages) > 0 {
 			if err := rq.db.CreateInBatches(userMessages, len(userMessages)).Error; err != nil {
 				return err
@@ -138,6 +148,7 @@ func (rq *RdsPersistence) FlushWhiteLoop(ctx context.Context) (err error) {
 				return err
 			}
 		}
+
 		msgs = []*proto.PersistenceData{}
 	}
 }
@@ -182,6 +193,6 @@ func (rq *RdsPersistence) Write(ctx context.Context, msgId int64, body []byte) (
 		return
 	}
 	rq.flushQueue <- persistenceData
-	logrus.Infof("RdsPersistence pushRoomMsgRequest,userId=%d,seqId=%d,body=%+v ", sendMsg.FromUserId, seqId, body)
+	logrus.Infof("RdsPersistence pushRoomMsgRequest,userId=%d,seqId=%d,body=%s ", sendMsg.FromUserId, seqId, body)
 	return
 }

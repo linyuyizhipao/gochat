@@ -1,6 +1,0 @@
-start run logic module
-time="2023-07-22T19:34:02+08:00" level=info msg="logic start run at-->tcp:127.0.0.1:6900" func="gochat/logic.(*Logic).InitRpcServer" file="/Users/hushuang/project/gochat/logic/publish.go:33"
-time="2023-07-22T19:34:02+08:00" level=info msg="logic start run at-->tcp:127.0.0.1:6901" func="gochat/logic.(*Logic).InitRpcServer" file="/Users/hushuang/project/gochat/logic/publish.go:33"
-run logic module done!
-time="2023-07-22T19:34:06+08:00" level=info msg="authToken3XbmSlKOlHr2640SKBfdlPsptYmba_NyTgJ9wEtbavt0=" func="gochat/logic.(*RpcLogic).Login" file="/Users/hushuang/project/gochat/logic/rpc.go:104"
-{"level":"warn","ts":"2023-07-22T19:39:07.767+0800","logger":"etcd-client","caller":"v3@v3.5.1/retry_interceptor.go:62","msg":"retrying of unary invoker failed","target":"etcd-endpoints://0xc00060ca80/127.0.0.1:2379","attempt":0,"error":"rpc error: code = DeadlineExceeded desc = latest balancer error: last connection error: connection error: desc = \"transport: Error while dialing dial tcp: lookup etcd: no such host\""}
