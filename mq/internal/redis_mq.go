@@ -40,7 +40,7 @@ func (rq *RdsQueue) Enqueue(ctx context.Context, msg []byte) (err error) {
 }
 
 func (rq *RdsQueue) Dequeue(ctx context.Context) (msg []byte, err error) {
-	result, rErr := rq.rds.BRPop(10, config.QueueName).Result()
+	result, rErr := rq.rds.BRPop(0, config.QueueName).Result()
 	if rErr != nil && rErr != redis.Nil {
 		logrus.Warningf("task queue block timeout,no msg err:%s", rErr.Error())
 		return
