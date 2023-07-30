@@ -17,6 +17,7 @@ require (
 
 require (
 	github.com/go-resty/resty/v2 v2.7.0
+	github.com/judwhite/go-svc v1.2.1
 	github.com/rpcxio/libkv v0.5.1-0.20210420120011-1fceaedca8a5
 	github.com/rpcxio/rpcx-etcd v0.1.0
 	github.com/smallnest/rpcx v1.7.4
@@ -96,7 +97,6 @@ require (
 	github.com/rs/cors v1.8.2 // indirect
 	github.com/rubyist/circuitbreaker v2.2.1+incompatible // indirect
 	github.com/samuel/go-zookeeper v0.0.0-20201211165307-7117e9ea2414 // indirect
-	github.com/smallnest/chanx v1.1.0 // indirect
 	github.com/smallnest/quick v0.0.0-20220103065406-780def6371e6 // indirect
 	github.com/soheilhy/cmux v0.1.5 // indirect
 	github.com/spf13/afero v1.8.2 // indirect

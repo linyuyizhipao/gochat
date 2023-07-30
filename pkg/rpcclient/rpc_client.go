@@ -108,7 +108,10 @@ func (r *LogicRpc) Push(req *proto.Send) (code int, msg string) {
 
 func (r *LogicRpc) PushRoom(req *proto.Send) (code int, msg string) {
 	reply := &proto.SuccessReply{}
-	r.client.Call(context.Background(), "PushRoom", req, reply)
+	err := r.client.Call(context.Background(), "PushRoom", req, reply)
+	if err != nil {
+		logrus.Error("LogicRpc.PushRoom11", "err", err)
+	}
 	code = reply.Code
 	msg = reply.Msg
 	return

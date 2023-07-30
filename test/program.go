@@ -3,51 +3,75 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/go-resty/resty/v2"
 	"github.com/gorilla/websocket"
+	"github.com/judwhite/go-svc"
 	"github.com/spf13/cast"
-
 	"gochat/proto"
 	"sync"
+	"sync/atomic"
 	"time"
 )
-import "github.com/go-resty/resty/v2"
 
-// "2023-06-11 10:25:25"
+// program implements svc.Service
+type program struct {
+	wg   sync.WaitGroup
+	quit chan struct{}
+
+	tokens []string
+}
+
 func main() {
-	wg := &sync.WaitGroup{}
-	roomId := 1
-	for i := 0; i < 10; i++ {
-		wg.Add(1)
-		num := i + 1
-		name := fmt.Sprintf("test-%d", num)
+	prg := &program{}
+
+	// Call svc.Run to start your program/service.
+	if err := svc.Run(prg); err != nil {
+		fmt.Println(err)
+	}
+}
+
+func (p *program) Init(env svc.Environment) error {
+	for i := 0; i < 1; i++ {
+		name := fmt.Sprintf("test-%d", i+1)
 		authToken := login(name)
 		if authToken == "" {
 			fmt.Printf("authToken is empty %d", i)
-			return
+			continue
 		}
-		go func(num int) {
-			defer wg.Done()
-			time.Sleep(time.Second * 5)
-			websocket1(name, authToken, roomId)
-
-			//for j := 0; j < 100; j++ {
-			//	pushRoom(authToken, fmt.Sprintf("我是:%s,这是我说的第%d句话", name, j+1), roomId)
-			//}
-		}(num)
-
+		p.tokens = append(p.tokens, authToken)
 	}
-	wg.Wait()
+	return nil
+}
 
-	time.Sleep(time.Second * 10)
-	lock.Lock()
+func (p *program) Start() error {
+	// The Start method must not block, or Windows may assume your service failed
+	// to start. Launch a Goroutine here to do something interesting/blocking.
 
-	for _, conn := range connMap {
-		conn.Close()
+	p.quit = make(chan struct{})
+	for i, token := range p.tokens {
+		token := token
+		roomId := 1
+		name := fmt.Sprintf("test-%d", i+1)
+		p.wg.Add(1)
+		go func() {
+			defer p.wg.Done()
+			websocket1(name, token, roomId)
+		}()
 	}
-	lock.Unlock()
 
-	fmt.Println("conn 结束了")
-	time.Sleep(time.Hour)
+	return nil
+}
+
+func (p *program) Stop() error {
+	// The Stop method is invoked by stopping the Windows service, or by pressing Ctrl+C on the console.
+	// This method may block, but it's a good idea to finish quickly or your process may be killed by
+	// Windows during a shutdown/reboot. As a general rule you shouldn't rely on graceful shutdown.
+
+	fmt.Println("Stopping...")
+	close(p.quit)
+	p.wg.Wait()
+	fmt.Println("Stopped.")
+	return nil
 }
 
 func register100() {
@@ -116,10 +140,8 @@ func pushRoom(authToken string, msg string, roomId int) {
 	return
 }
 
-var (
-	connMap = map[string]*websocket.Conn{}
-	lock    = &sync.Mutex{}
-)
+var nnm int64
+var gg sync.Once
 
 func websocket1(name, authToken string, roomId int) {
 	// 连接WebSocket服务器
@@ -128,9 +150,6 @@ func websocket1(name, authToken string, roomId int) {
 		fmt.Println("err111111111:", err)
 		return
 	}
-	lock.Lock()
-	connMap[authToken] = conn
-	lock.Unlock()
 	sendMsg := &proto.SendWebSocket{
 		Code:         0,
 		Msg:          "",
@@ -151,9 +170,38 @@ func websocket1(name, authToken string, roomId int) {
 		fmt.Println("getUsergetUsergetUser 222err:", err)
 		return
 	}
+	quit := make(chan struct{})
+	go func() {
+		ticker := time.NewTicker(1 * time.Second)
+		defer func() {
+			ticker.Stop()
+			conn.Close()
+		}()
+		for {
+			select {
+			case <-quit:
+				return
+			case <-ticker.C:
+				if err := conn.WriteMessage(websocket.PongMessage, nil); err != nil {
+					return
+				}
+			}
+		}
+	}()
+
+	go func() {
+		gg.Do(func() {
+			for {
+				fmt.Printf("nnmnnmnnmnnmnnm=%d \n", atomic.LoadInt64(&nnm))
+				time.Sleep(time.Second * 3)
+			}
+		})
+
+	}()
 
 	uid, userName := getUser(authToken)
 	for j := 0; j < 100; j++ {
+		atomic.AddInt64(&nnm, 1)
 		sendMsg2 := &proto.SendWebSocket{
 			Code:         0,
 			Msg:          fmt.Sprintf("我是:%s,这是我说的第%d句话", name, j+1),
@@ -169,9 +217,11 @@ func websocket1(name, authToken string, roomId int) {
 		sendMsgByte2, _ := json.Marshal(sendMsg2)
 		err = conn.WriteMessage(websocket.TextMessage, sendMsgByte2)
 		if err != nil {
+			fmt.Printf("conn.WriteMessage err=%v", err)
 			continue
 		}
 	}
+	quit <- struct{}{}
 	return
 }
 
@@ -197,7 +247,6 @@ func getUser(authToken string) (uid int, userName string) {
 		fmt.Printf("getUsererr:%s", err.Error())
 		return
 	}
-	fmt.Printf("getUser222:%+v", dataMap)
 	data := cast.ToStringMap(dataMap["data"])
 	uid = cast.ToInt(data["userId"])
 	userName = cast.ToString(data["userName"])
