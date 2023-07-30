@@ -3,7 +3,7 @@ certPath = ""
 keyPath = ""
 
 [connect-websocket]
-#serverId = "1000"
+serverId = "1000"
 bind = "0.0.0.0:7000"
 
 [connect-tcp]

@@ -26,6 +26,10 @@ run:
 	sleep 2
 	nohup target/gochat -module task -conf="./target/config/$(Mode)" 2>&1 > target/log/task.log &
 
+.PHONE: ws
+ws:
+	nohup target/gochat -module connect_websocket -conf="./target/config/$(Mode)" 2>&1 > target/log/connect_websocket.log &
+
 stop:
 	pkill -f target/gochat
 

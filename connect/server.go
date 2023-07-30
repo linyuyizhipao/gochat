@@ -91,6 +91,10 @@ func (s *Server) writePump(ch *Channel, c *Connect) {
 
 func (s *Server) readPump(ch *Channel, c *Connect) {
 	defer func() {
+		if ee := recover(); ee != nil {
+			logrus.Errorf("start exec disConnect ...%v", ee)
+		}
+
 		logrus.Infof("start exec disConnect ...")
 		if ch.Room == nil || ch.userId == 0 {
 			logrus.Infof("roomId and userId eq 0")
@@ -119,17 +123,18 @@ func (s *Server) readPump(ch *Channel, c *Connect) {
 		_, message, err := ch.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				logrus.Errorf("readPump ReadMessage err:%s", err.Error())
+				logrus.Errorf("readPump1 ReadMessage err:%s", err.Error())
 				return
 			}
 		}
 		if message == nil {
-			return
+			logrus.Errorf("readPump2 ReadMessage message:%s", message)
+			continue
 		}
 
 		var sendMsg proto.SendWebSocket
 		if err := json.Unmarshal(message, &sendMsg); err != nil {
-			logrus.Errorf("tcp message struct %+v", sendMsg)
+			logrus.Errorf("readPump3 tcp message struct %+v", sendMsg)
 			break
 		}
 		if err = s.Exec(c.ServerId, sendMsg, ch); err != nil {
